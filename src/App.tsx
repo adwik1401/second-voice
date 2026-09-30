@@ -1,6 +1,11 @@
 import BankApp from './app/BankApp';
+import Simulator from './simulator/Simulator';
 
-/** The Larkmoor bank app with the Voice Check and the Fraud Officer Panel. */
+/**
+ * Two pages, no router dependency:
+ *  `/`           the Larkmoor bank app with the Voice Check and the Fraud Officer Panel
+ *  `/simulator`  the phone-side "scammer" for demos (see src/simulator)
+ */
 export default function App() {
-  return <BankApp />;
+  return window.location.pathname === '/simulator' ? <Simulator /> : <BankApp />;
 }

@@ -1,6 +1,6 @@
 # Second Voice — Implementation Plan
 
-**Overall Progress:** `63%` (20 / 32 steps done · Phases 1–4 done · Phase 0 gate proceeded past by Adwik's decision: only 3 counted trials + observations; range/latency/gateway checks still open)
+**Overall Progress:** `72%` (23 / 32 steps done · Phases 1–5 done · Phase 0 gate proceeded past by Adwik's decision: only 3 counted trials + observations; range/latency/gateway checks still open)
 
 **Spec:** [`.claude/specs/2026-09-30-second-voice-design.md`](../specs/2026-09-30-second-voice-design.md) · **Repo:** https://github.com/adwik1401/second-voice
 
@@ -97,12 +97,12 @@ Each code phase follows:
 - [x] 🟩 **Step 21: Audit Record export** (`src/voice/audit.ts`) — JSON + printable HTML; no audio stored, account masked, all spoken text HTML-escaped
 - [x] 🟩 Removed the Phase 0 `/spike` page and its agent script (git history keeps them)
 
-### Phase 5 — Scammer Simulator
+### Phase 5 — Scammer Simulator 🟩 Done (2026-09-30)
 > `[DELEGATING → Codex /execute]` → `[DELEGATING → Codex /run-code]` → `[DELEGATING → Codex /review]` · clip generation: Claude-managed
 
-- [ ] 🟥 **Step 22: Choose TTS provider** — licence check for demo/public use (spec open item 2); log in wiki
-- [ ] 🟥 **Step 23: Generate clips** — ~10 coaching lines at conversational (speakerphone) volume + 3 benign; static MP3s in `public/`
-- [ ] 🟥 **Step 24: `/simulator` page** — mobile-first button grid, one tap = play
+- [x] 🟩 **Step 22: TTS provider** — **decision changed:** the phone speaks the lines live with the browser's built-in speech synthesis (Web Speech API). No audio files, no third-party licence question (Windows SAPI output has unclear redistribution terms), no accounts, works offline, no assets to host
+- [x] 🟩 **Step 23: Script** — 8 coaching lines (feeding answers / secrecy / rushing / posing as the bank) + 3 benign, in `src/simulator/lines.ts`; a test asserts the detector catches every coaching line at ≥ 0.7 and none of the benign ones
+- [x] 🟩 **Step 24: `/simulator` page** — mobile-first (verified at a real 390 px emulated viewport), one tap per line, "Play a coached call" (3 lines, 9 s apart), voice/speed/volume controls, Stop
 
 ### Phase 6 — Scenario Evaluation + Tuning
 > Claude-managed with Adwik (manual runs) · any tuning code changes → `/execute` → `/run-code` → `/review`

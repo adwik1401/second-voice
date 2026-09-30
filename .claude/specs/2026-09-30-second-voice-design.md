@@ -185,7 +185,7 @@ Phone: Scammer Simulator page (pre-generated AI-voice clips)
 
 ### 7.12 Scammer Simulator
 - Standalone page (phone). Buttons for ~10 coaching lines at conversational (speakerphone) volume; plus 3 "benign chatter" lines for false-positive testing.
-- Clips **pre-generated** with an AI TTS tool and shipped as static MP3s (no runtime dependency). Provider picked at plan time (candidates: ElevenLabs, OpenAI TTS) — must allow commercial/demo use.
+- **Changed in Phase 5:** no clips. The phone speaks the lines live through the browser's built-in speech synthesis — no audio files, no third-party licence question, no assets to host, works offline. Route: `/simulator`. A test asserts the detector catches every coaching line and none of the benign ones.
 
 ## 8. Data flow (coached-scam path)
 
