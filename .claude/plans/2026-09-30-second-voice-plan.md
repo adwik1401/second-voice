@@ -1,6 +1,6 @@
 # Second Voice — Implementation Plan
 
-**Overall Progress:** `6%` (2 / 32 steps done · Phase 0 in progress: Step 3 built, awaiting first live run + trials)
+**Overall Progress:** `9%` (3 / 32 steps done · Phase 0 in progress: Step 3 running live; Step 4 whisper trials + latency comparison remaining)
 
 **Spec:** [`.claude/specs/2026-09-30-second-voice-design.md`](../specs/2026-09-30-second-voice-design.md) · **Repo:** https://github.com/adwik1401/second-voice
 
@@ -39,14 +39,15 @@ Each code phase follows:
   - [x] 🟩 `GET /api/token/agent` → AAI `GET /v1/token` (Bearer auth; 120 s redemption, 600 s session cap)
   - [x] 🟩 STT browser token endpoint verified in docs (`GET streaming.assemblyai.com/v3/token`, raw-key auth) → `GET /api/token/stt`
   - [x] 🟩 Live-verified both endpoints return a token with the real key
-- [ ] 🟨 **Step 3: Spike page (`/spike`, throwaway)** — built, typechecked, linted; **agents created (managed + gateway); first live run pending mic**
+- [x] 🟩 **Step 3: Spike page (`/spike`, throwaway)** — built, typechecked, linted, first live run passed
   - [x] 🟩 Mic A + Mic B with different constraints; page reports whether Chrome honoured both (`getSettings()`)
   - [x] 🟩 Room stream → Realtime STT `speaker_labels: true`, `max_speakers: 3` (`universal-3-6-pro`)
   - [x] 🟩 Agent stream → Voice Agent session via stored `agent_id`; replies played with barge-in flush
   - [x] 🟩 50 ms RMS frames on Mic B → per-word dBFS + per-speaker loudness table (near/far at 6 dB gap)
   - [x] 🟩 `scripts/spike-agents.mjs` creates the managed + LLM-Gateway agents for the latency comparison
-  - [ ] 🟥 First live run: both sockets connect, transcripts appear, agent speaks
-- [ ] 🟥 **Step 4: Trials (Adwik + phone)**
+  - [x] 🟩 First live run: both sockets connect, transcripts appear, agent speaks (2026-09-30; findings in wiki `spike-results.md`)
+- [ ] 🟨 **Step 4: Trials (Adwik + phone)**
+  - [x] 🟩 Spike now subtracts the agent's own words from the "background" highlight (run 1 showed agent TTS leaking into the room stream)
   - [ ] 🟥 Generate 3 test clips (2 coaching, 1 benign) with any TTS for the spike
   - [ ] 🟥 10 whisper trials at ~1.5 m → record background identification rate
   - [ ] 🟥 Confirm the agent's own TTS is not flagged as background; benign clip not flagged as coaching

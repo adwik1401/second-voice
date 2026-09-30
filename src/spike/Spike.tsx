@@ -11,6 +11,8 @@ type AgentKind = 'managed' | 'gateway';
 const STORE_KEY = 'sv.spike.agents';
 /** A room-stream word counts as "heard by the agent" if a customer transcript landed within this window. */
 const MATCH_WINDOW_MS = 8000;
+/** The agent's own reply text arrives after it finishes speaking, and replies run long — wider window. */
+const AGENT_WINDOW_MS = 15000;
 /** Provisional near/far threshold from the spec; the trials tell us whether it is right. */
 const FAR_GAP_DB = 6;
 
@@ -79,15 +81,19 @@ export default function Spike() {
     setRunning(false);
   }
 
-  // Room words the agent stream never heard, judged per turn against nearby customer transcripts.
+  // Classify each room word against the two things we already know were said near it:
+  //   customer transcript → matched (plain)   |   the agent's own reply → "leak" (purple)
+  //   neither             → "missing" (orange) = background-speech candidate
   const turnsView = useMemo(
     () =>
       roomTurns.map((t) => {
-        const agentTexts = agentLines
-          .filter((l) => l.role === 'customer' && Math.abs(l.at - t.at) <= MATCH_WINDOW_MS)
-          .map((l) => l.text);
-        const missing = new Set(unmatchedWords(t.words.map((w) => w.text), agentTexts).map((w) => w.toLowerCase()));
-        return { turn: t, missing };
+        const near = (role: AgentLine['role'], windowMs: number) =>
+          agentLines.filter((l) => l.role === role && Math.abs(l.at - t.at) <= windowMs).map((l) => l.text);
+        const words = t.words.map((w) => w.text);
+        const notCustomer = unmatchedWords(words, near('customer', MATCH_WINDOW_MS));
+        const missing = new Set(unmatchedWords(notCustomer, near('agent', AGENT_WINDOW_MS)).map((w) => w.toLowerCase()));
+        const leak = new Set(notCustomer.map((w) => w.toLowerCase()).filter((w) => !missing.has(w)));
+        return { turn: t, missing, leak };
       }),
     [roomTurns, agentLines],
   );
@@ -176,15 +182,19 @@ export default function Spike() {
       <div className="cols">
         <section>
           <h2>
-            2 · Room stream (speaker · dBFS per word · <span className="missing">orange = agent never heard it</span>)
+            2 · Room stream (speaker · dBFS per word ·{' '}
+            <span className="missing">orange = neither you nor the agent said it</span> ·{' '}
+            <span className="leak">purple = agent's own voice leaking in</span>)
           </h2>
-          {turnsView.map(({ turn, missing }, i) => (
+          {turnsView.map(({ turn, missing, leak }, i) => (
             <p key={i} className="turn">
               <b>[{turn.speaker}]</b>{' '}
               {turn.words.map((w, j) => (
                 <span
                   key={j}
-                  className={missing.has(w.text.toLowerCase()) ? 'missing' : ''}
+                  className={
+                    missing.has(w.text.toLowerCase()) ? 'missing' : leak.has(w.text.toLowerCase()) ? 'leak' : ''
+                  }
                   title={`speaker ${w.speaker}, ${fmtDb(w.dbfs)} dBFS`}
                 >
                   {w.text}
