@@ -1,8 +1,8 @@
 /**
- * Browser audio plumbing for the Phase 0 spike.
+ * Browser audio plumbing: mic capture, PCM framing with per-frame loudness, and agent playback.
  *
- * - `openMic`         : getUserMedia with explicit processing constraints (so we can test whether
- *                       Chrome honours *different* constraints for two streams from one device).
+ * - `openMic`         : getUserMedia with explicit processing constraints (always read back `getSettings()`:
+ *                       the browser may ignore them).
  * - `startPcmCapture` : AudioWorklet that frames the mic into fixed-size PCM16 chunks and reports
  *                       the RMS level of each chunk (the raw material for loudness tagging).
  * - `PcmPlayer`       : gapless playback of the agent's PCM16 reply audio, with barge-in flush.
@@ -59,7 +59,7 @@ export function openMic(processing: {
   // Browsers expose the microphone API only on secure pages (https or localhost). On a plain-http
   // network address `navigator.mediaDevices` is undefined, which otherwise surfaces as a cryptic TypeError.
   if (!navigator.mediaDevices) {
-    throw new Error('Microphone needs a secure page — open http://localhost:5173/spike on this computer (not the network address).');
+    throw new Error('Microphone needs a secure page — open http://localhost:5173 on this computer (not the network address).');
   }
   return navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, ...processing } });
 }

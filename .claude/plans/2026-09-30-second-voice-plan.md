@@ -1,6 +1,6 @@
 # Second Voice — Implementation Plan
 
-**Overall Progress:** `47%` (15 / 32 steps done · Phases 1–3 done · Phase 0 gate proceeded past by Adwik's decision: only 3 counted trials + observations; range/latency/gateway checks still open)
+**Overall Progress:** `63%` (20 / 32 steps done · Phases 1–4 done · Phase 0 gate proceeded past by Adwik's decision: only 3 counted trials + observations; range/latency/gateway checks still open)
 
 **Spec:** [`.claude/specs/2026-09-30-second-voice-design.md`](../specs/2026-09-30-second-voice-design.md) · **Repo:** https://github.com/adwik1401/second-voice
 
@@ -88,14 +88,14 @@ Each code phase follows:
 - [x] 🟩 **Step 16: Agent Injector** (`src/voice/injector.ts`) — trusted `system`-role context + coaching note; max 1 proactive per 20 s; non-accusatory. Live: "Is there someone there with you right now? … the bank will never ask you to keep a payment a secret or to lie to us."
 - [x] 🟩 **Step 17: Error handling** per spec §9 — one `session.resume` reconnect with a fresh token, then fail-safe hold; mic denied / no token / resume failure → hold; connect timeout
 
-### Phase 4 — Room Listener + Signal Pipeline + Fraud Officer Panel
+### Phase 4 — Room Listener + Signal Pipeline + Fraud Officer Panel 🟩 Done (2026-09-30) — verified live
 > `[DELEGATING → Codex /execute]` → `[DELEGATING → Codex /run-code]` → `[DELEGATING → Codex /review]`
 
-- [ ] 🟥 **Step 18: Room Listener** — shared mic stream → Realtime STT; RMS frame capture; degraded mode if unavailable
-- [ ] 🟥 **Step 19: Pipeline wiring** — room turns + agent transcripts → Signal Engine → `/api/detect` (debounced, 1 in-flight) → Risk Scorer → Injector
-- [ ] 🟥 **Step 20: Fraud Officer Panel** — dual transcripts, highlighted background utterances, speaker/loudness strip, signal chips, risk gauge + reasons, decision
-- [ ] 🟥 **Step 21: Audit Record export** — JSON + printable HTML (spec §7.11); no audio stored
-- [ ] 🟥 Remove the Phase 0 `/spike` page
+- [x] 🟩 **Step 18: Room Listener** (`src/voice/room-listener.ts`) — shared mic → Realtime STT (speaker labels, per-word dBFS from the 50 ms RMS frames); fails soft to `unavailable`. Live: connected, diarization separated customer (A) from coach (B)
+- [x] 🟩 **Step 19: Pipeline wiring** (`VoiceCheck`) — both streams → Signal Engine (settle delay, room-only runs, stopword bridging) → detector → scorer → injector; same-audio de-duplication across streams; room-heard coaches feed echo. (No separate debounce needed: each run is judged once.)
+- [x] 🟩 **Step 20: Fraud Officer Panel** (`src/app/OfficerPanel.tsx`, tested `officer-signals.ts`) — dual transcripts, highlighted background utterances, speaker/loudness strip, signal chips, risk gauge + reasons, decision
+- [x] 🟩 **Step 21: Audit Record export** (`src/voice/audit.ts`) — JSON + printable HTML; no audio stored, account masked, all spoken text HTML-escaped
+- [x] 🟩 Removed the Phase 0 `/spike` page and its agent script (git history keeps them)
 
 ### Phase 5 — Scammer Simulator
 > `[DELEGATING → Codex /execute]` → `[DELEGATING → Codex /run-code]` → `[DELEGATING → Codex /review]` · clip generation: Claude-managed
