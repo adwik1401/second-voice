@@ -8,3 +8,4 @@
 - Spike: finalised room turns with no per-word data now fall back to the turn transcript instead of rendering blank; run 4 confirmed the shared mic removes the agent-voice leak.
 - Spike: AGC toggle for range testing; latency samples under 200 ms discarded as glitches.
 - Phase 1: `src/core/` — loudness tie-breaker helpers, fuzzy digit-aware text matching, Signal Engine (word classification, room-only speech, echo, evidence rule), precheck rule, risk scorer; 93 new tests.
+- Phase 2: mock bank API (`/api/bank/*`) with demo personas; `POST /api/detect` — rules-first coaching detector (`src/core/coaching-rules.ts`) with an opt-in LLM second opinion; `scripts/create-agent.mjs` + `scripts/agent-config.ts` (6 client tools, voice pinned); coaching floor in the risk scorer; 126 new tests (234 total).

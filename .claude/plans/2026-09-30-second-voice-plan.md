@@ -1,6 +1,6 @@
 # Second Voice — Implementation Plan
 
-**Overall Progress:** `22%` (7 / 32 steps done · Phase 1 done · Phase 0 gate proceeded past by Adwik's decision: only 3 counted trials + observations; range/latency/gateway checks still open)
+**Overall Progress:** `31%` (10 / 32 steps done · Phases 1–2 done · Phase 0 gate proceeded past by Adwik's decision: only 3 counted trials + observations; range/latency/gateway checks still open)
 
 **Spec:** [`.claude/specs/2026-09-30-second-voice-design.md`](../specs/2026-09-30-second-voice-design.md) · **Repo:** https://github.com/adwik1401/second-voice
 
@@ -53,7 +53,7 @@ Each code phase follows:
   - [ ] 🟨 **Range test (replaces the 1.5 m trials — 1.5 m failed in run 5; coach speech captured only with the phone near the laptop):** 30 / 60 / 100 cm × phone volume 50% / 100%, ~5 plays each; gate ≥ 7 of 10 visible at ~60 cm. (original wording follows) 10 trials: phone plays a coach clip at normal volume ~1.5 m while the victim answers the agent out loud (+ a few clips while the agent talks) → press ✔/✘ for "coach speech visible to the detector" (room-only words OR in the agent transcript)
   - [x] 🟩 Confirmed the agent's own voice is absent from the room stream with AEC on (run 4: zero leaked words)
   - [ ] 🟥 Confirm the agent's own TTS is not flagged as background; benign clip not flagged as coaching
-  - [ ] 🟨 Measure agent reply latency: managed model vs LLM Gateway (Claude) → pick one — **managed measured: avg 1,745 ms (n = 6, steady state 1.3–1.8 s); gateway still to measure**
+  - [x] 🟩 ~~managed vs Gateway latency~~ — moot: the Gateway's Claude models are not accessible on this (Free) account; the agent stays on the managed model. Measured: **managed measured: avg 1,745 ms (n = 6, steady state 1.3–1.8 s); gateway still to measure**
 - [ ] 🟥 **Step 5: Go/no-go** (record in wiki `decisions.md`)
   - [ ] 🟥 ≥ 7 of 10 trials visible → proceed as reframed (content + echo core)
   - [ ] 🟥 < 7 of 10 → pivot to content + echo on the agent-stream transcript only; pitch "detects coached answers"
@@ -71,13 +71,13 @@ Each code phase follows:
 - [x] 🟩 **Step 9: Precheck rule** (`src/core/precheck.ts`) — ≥ £1,000 and (new payee or CoP ≠ MATCH), or ≥ 3× the 90-day max
 - [x] 🟩 Unit tests for every function above, including all bands and hard triggers — 108 tests passing; mutation-checked (4 deliberate breaks each failed the matching test)
 
-### Phase 2 — Serverless API + Mock Bank
+### Phase 2 — Serverless API + Mock Bank 🟩 Done (2026-09-30)
 > `[DELEGATING → Codex /execute]` → `[DELEGATING → Codex /run-code]` → `[DELEGATING → Codex /review]`
 
-- [ ] 🟥 **Step 10: Mock bank data + endpoints** — customers, payees (legit / scam personas), `GET /api/bank/profile|payee-check|payee-risk`
-- [ ] 🟥 **Step 11: `POST /api/detect`** — the core content-cue classifier: takes utterances from **either stream** (spec §7.6), LLM Gateway, JSON schema, temperature 0, 3 s timeout → `unclear`
-- [ ] 🟥 **Step 12: Agent setup script** — creates/updates the stored agent (system prompt §7.10, greeting, voice `anna`, `voice_focus`, transcription prompt, keyterms, chosen LLM)
-- [ ] 🟥 Endpoint tests for all `api/*` (mock AAI + Gateway, incl. timeout path)
+- [x] 🟩 **Step 10: Mock bank data + endpoints** — `api/_lib/bank-data.ts` + `bank.ts`; `GET /api/bank/profile|payee-check|payee-risk`; personas tuned so the £8,000 demo payment HOLDS on bank signals alone (60) and the coach tips it to ESCALATE
+- [x] 🟩 **Step 11: `POST /api/detect`** — **rules-first** (`src/core/coaching-rules.ts`: instant, offline, injection-proof; 16/16 visible, 8/10 held-out, 0 false alarms) with an **opt-in LLM second opinion** (`DETECT_MODEL`; structured or unstructured mode). Pivot forced by the account: Free tier → gateway has no usable rate limit and only `qwen3.5-4b-32k-fast` is accessible
+- [x] 🟩 **Step 12: Agent setup script** — `scripts/agent-config.ts` + `scripts/create-agent.mjs` (create / `--update <id>`); live agent `agent_be6f8fc68a1544f49d7f04b83eb88d10`: 6 client tools, `voice` AND `output.voice` = anna (a live read-back caught `output.voice` defaulting to "ivy"), far-field, keyterms; managed LLM; turn detection left on default per AssemblyAI docs
+- [x] 🟩 Endpoint tests for all `api/*` (mock gateway incl. timeout / 429 / malformed; live-verified `POST /api/detect` and bank routes) — 234 tests passing
 
 ### Phase 3 — Bank App + Voice Check Agent
 > `[DELEGATING → Codex /execute]` → `[DELEGATING → Codex /run-code]` → `[DELEGATING → Codex /review]`

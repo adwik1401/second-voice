@@ -98,7 +98,7 @@ Phone: Scammer Simulator page (pre-generated AI-voice clips)
 - **Purpose:** own the Voice Agent API WebSocket session.
 - **Interface:** `start(intent, customerId)`, `stop()`, events `onUserTranscript`, `onAgentTranscript`, `onToolCall`, `onStateChange`. Method `inject(note: string, speakNow: boolean)` → sends `conversation.message` then optional `reply.create { instructions }`.
 - **Config:** stored agent created once via REST; browser connects with single-use token from `/api/token/agent`. Voice `anna` (UK). `voice_focus: far-field` (laptop mic). `transcription_prompt`: scenario context ("UK bank fraud-check call about a bank transfer…"). `keyterms`: payee name, bank name, "Confirmation of Payee", "sort code".
-- **LLM:** decided in spike — managed model vs LLM Gateway (`claude-sonnet-4-6` or current equivalent). Pick lower latency with acceptable instruction-following.
+- **LLM:** the managed model. The LLM Gateway's Claude models are not accessible on a Free-tier account (only `qwen3.5-4b-32k-fast` is), so a gateway-backed agent is not an option here. Turn detection stays on AssemblyAI's default (their docs advise against tuning).
 - **Depends on:** `/api/token/agent`, Mock Bank Services (tools).
 
 ### 7.3 Room Listener (room stream)
@@ -130,11 +130,11 @@ Phone: Scammer Simulator page (pre-generated AI-voice clips)
 - **Interface:** pure fns `findRoomOnlySpeech(roomTurns, customerTurns, agentTurns, speechWindows, taggedWords) → RoomUtterance[]`, `detectEcho(utterance, nextCustomerTurn) → EchoResult`.
 
 ### 7.6 Coaching Detector
-- **Purpose:** classify utterances (from either stream) + conversation context for coaching.
+- **Purpose:** classify utterances (from either stream) for coaching language. **Rules first, LLM second (changed in Phase 2):** a deterministic rules classifier (`src/core/coaching-rules.ts`) answers instantly and offline and cannot be prompt-injected; an LLM second opinion is opt-in (`DETECT_MODEL`) and only consulted when the rules find nothing. Reason: the LLM Gateway is rate-limited per model (Free tier: no usable limit; Paid: 30 requests/minute) and this account can use one small model only. Rules scored 16/16 on the visible labelled cases and 8/10 on held-out cases with zero false alarms; the two misses are scripted answers with no trigger phrase — the case the LLM exists for.
 - **Endpoint:** `POST /api/detect`
   - **Request:** `{ utterances: { source: 'agent_stream'|'room_stream', text: string }[], recentConversation: {role:'agent'|'customer', text}[], transfer: {amountGBP, payeeName, purpose} }`
   - **Response:** `{ isCoaching: boolean, type: 'script_feeding'|'secrecy_instruction'|'urgency_pressure'|'impersonation'|'benign_chatter'|'unclear', quote: string, confidence: 0..1, echoOf?: string }`
-- **LLM:** LLM Gateway, JSON output, temperature 0; 3 s timeout → treat as `unclear`.
+- **LLM (optional):** LLM Gateway, temperature 0, 3 s timeout → the verdict falls back to `unclear` with `degraded: true`. Structured (`response_format` JSON schema) or unstructured (prompt-only JSON, for models like qwen that reject `response_format`). Response gains `source: 'rules' | 'llm'`; `echoOf` is deferred.
 - **Debounce:** one call per background utterance, max 1 in-flight.
 
 ### 7.7 Risk Scorer
@@ -177,7 +177,7 @@ Phone: Scammer Simulator page (pre-generated AI-voice clips)
 ### 7.10 Agent conversation design
 - **System prompt outline:** role (Larkmoor fraud-prevention assistant), tone (calm, warm, British, brief — ≤ 2 sentences per turn), goal (understand the payment, protect the customer, never accuse), required flow, tool-use rules, the protective invariant, disclosure line at start ("This check uses audio from your device to help protect you").
 - **Flow:** greet + disclosure → confirm amount/payee (tool: `check_payee`, `get_payee_risk`) → purpose → relationship/how met → how they were contacted about this payment → any pressure/urgency/secrecy → (injected second-voice question if triggered) → `decide_payment` → explain outcome → offer human.
-- **Greeting (fixed):** "Hi, I'm Larkmoor's payment safety assistant. Before we send this £{amount}, I'd like to ask a couple of quick questions — it helps protect you from scams."
+- **Greeting (fixed text — a stored agent's greeting cannot carry the amount; the app sends the transfer as a trusted `conversation.message` with role `system` right after `session.ready`):** "Hi, I'm Larkmoor's payment safety assistant. This check uses audio from your device to help protect you. What's this payment for?" (superseded draft follows) "Hi, I'm Larkmoor's payment safety assistant. Before we send this £{amount}, I'd like to ask a couple of quick questions — it helps protect you from scams."
 
 ### 7.11 Fraud Officer Panel
 - Live dual transcripts (agent stream vs room stream), background utterances highlighted, speaker/loudness timeline strip, signal chips (CoP, account age, coaching, ECHO), risk gauge with reasons, final decision.
@@ -237,7 +237,7 @@ A throwaway page proving the core bet:
 - Phone plays coach clips at normal volume ~1.5 m away **while the victim answers the agent out loud**, and a few clips while the agent is talking.
 - **Pass (revised 2026-09-30):** in ≥ 7 of 10 trials the coach's speech is visible to the detector by at least one path — room-only words, or present in the agent transcript — judged by the human on the spike page. The agent's own TTS should be largely absent from the room stream now AEC is on (≤ 1 leak in 10 agent turns) or fully subtractable.
 - Content judgement (does a coaching line read as coaching, a benign line as benign) is built and scored in Phase 2's `/api/detect`; the spike only proves the words reach us.
-- Also measure: agent reply latency managed vs LLM Gateway (more than one sample).
+- Also measure: agent reply latency (managed agent only — the Gateway's Claude models are not accessible on this account).
 - **Whispers are out of scope** (run 3: quiet clips 0% transcribed at ~1.5 m).
 - **If fail** (coach speech not reliably captured on either stream): pivot to content + echo analysis of the agent-stream transcript only, and pitch "detects coached answers".
 
@@ -249,7 +249,7 @@ Public GitHub repo (MIT) · deployed app URL · Scammer Simulator URL · 3-min v
 
 1. Deploy target: Vercel vs Netlify.
 2. TTS provider for Simulator clips (licence check).
-3. Agent LLM: managed vs LLM Gateway model (spike latency test).
+3. ~~Agent LLM: managed vs LLM Gateway~~ — resolved: managed (Gateway models inaccessible on this account).
 4. Chrome behaviour for dual-constraint capture from one device (spike).
 5. Realtime STT temporary-token endpoint for browser (verify in docs during spike).
 6. ~~Bank name check~~ — resolved: **Larkmoor Bank**.
