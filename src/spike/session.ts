@@ -154,11 +154,18 @@ export class SpikeSession {
       at: Date.now(),
       speaker,
       text: turn.transcript,
-      words: (turn.words ?? []).map((w) => ({
-        text: w.text,
-        speaker: w.speaker ?? speaker,
-        dbfs: wordDbfs(w, this.roomRms, FRAME_MS),
-      })),
+      // Run 4: some finalised turns arrived with a transcript but no per-word data and rendered as a blank
+      // "[?]" line, hiding what the room heard. Fall back to the transcript text (no loudness available).
+      words: turn.words?.length
+        ? turn.words.map((w) => ({
+            text: w.text,
+            speaker: w.speaker ?? speaker,
+            dbfs: wordDbfs(w, this.roomRms, FRAME_MS),
+          }))
+        : turn.transcript
+            .split(/\s+/)
+            .filter(Boolean)
+            .map((text) => ({ text, speaker, dbfs: null })),
     });
   }
 

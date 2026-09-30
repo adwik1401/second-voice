@@ -1,6 +1,6 @@
 # Second Voice — Implementation Plan
 
-**Overall Progress:** `9%` (3 / 32 steps done · Phase 0 in progress: Step 4: shared-mic trials + latency comparison remaining)
+**Overall Progress:** `9%` (3 / 32 steps done · Phase 0 in progress: Step 4: run 4 looks positive (coach speech captured, agent leak gone); formal 10-trial count + latency comparison remaining)
 
 **Spec:** [`.claude/specs/2026-09-30-second-voice-design.md`](../specs/2026-09-30-second-voice-design.md) · **Repo:** https://github.com/adwik1401/second-voice
 
@@ -51,9 +51,9 @@ Each code phase follows:
   - [x] 🟩 Generate test clips (3 coaching, 1 benign × normal/quiet) — `scripts/make-spike-clips.ps1`, served at `/spike-clips/index.html`
   - [x] 🟩 Switch spike to one shared mic stream (AEC on, NS/AGC off); constraint probe added — Chrome grants all 8 combinations when opened alone
   - [ ] 🟥 10 trials: phone plays a coach clip at normal volume ~1.5 m while the victim answers the agent out loud (+ a few clips while the agent talks) → press ✔/✘ for "coach speech visible to the detector" (room-only words OR in the agent transcript)
-  - [ ] 🟥 Confirm the agent's own voice is now largely absent from the room stream (AEC on)
+  - [x] 🟩 Confirmed the agent's own voice is absent from the room stream with AEC on (run 4: zero leaked words)
   - [ ] 🟥 Confirm the agent's own TTS is not flagged as background; benign clip not flagged as coaching
-  - [ ] 🟥 Measure agent reply latency: managed model vs LLM Gateway (Claude) → pick one
+  - [ ] 🟨 Measure agent reply latency: managed model vs LLM Gateway (Claude) → pick one — **managed measured: avg 1,745 ms (n = 6, steady state 1.3–1.8 s); gateway still to measure**
 - [ ] 🟥 **Step 5: Go/no-go** (record in wiki `decisions.md`)
   - [ ] 🟥 ≥ 7 of 10 trials visible → proceed as reframed (content + echo core)
   - [ ] 🟥 < 7 of 10 → pivot to content + echo on the agent-stream transcript only; pitch "detects coached answers"
