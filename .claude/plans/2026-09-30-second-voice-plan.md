@@ -1,6 +1,6 @@
 # Second Voice — Implementation Plan
 
-**Overall Progress:** `0%` (0 / 9 phases)
+**Overall Progress:** `3%` (1 / 32 steps done · Phase 0 in progress: Steps 2–3 built, awaiting live verification)
 
 **Spec:** [`.claude/specs/2026-09-30-second-voice-design.md`](../specs/2026-09-30-second-voice-design.md) · **Repo:** https://github.com/adwik1401/second-voice
 
@@ -29,20 +29,23 @@ Each code phase follows:
 
 ## Tasks
 
-### Phase 0 — Scaffold + De-risking Spike 🔴 go/no-go gate
+### Phase 0 — Scaffold + De-risking Spike 🔴 go/no-go gate 🟨 In Progress
 > Scaffold: `[DELEGATING → Codex /execute]` → `/run-code` → `/review` · Env + trials: **Claude-managed with Adwik** (needs a live mic and a phone)
 
-- [ ] 🟥 **Step 1: Scaffold repo**
-  - [ ] 🟥 Vite + React + TS app; ESLint; Vitest; scripts `dev`, `build`, `lint`, `typecheck`, `test`
-  - [ ] 🟥 `api/` folder for Vercel functions; `.env.example` (`ASSEMBLYAI_API_KEY`)
-- [ ] 🟥 **Step 2: Token endpoints (Claude-managed secrets)**
-  - [ ] 🟥 `GET /api/token/agent` → AAI `GET /v1/token` (60–300 s expiry)
-  - [ ] 🟥 Verify the Realtime STT browser temporary-token endpoint in the docs → `GET /api/token/stt`
-- [ ] 🟥 **Step 3: Spike page (`/spike`, throwaway)**
-  - [ ] 🟥 Mic A + Mic B with different constraints; log whether Chrome honours both
-  - [ ] 🟥 Room stream → Realtime STT `speaker_labels: true`, `max_speakers: 3`
-  - [ ] 🟥 Agent stream → minimal Voice Agent session (voice `anna`) for transcript diff + AEC check
-  - [ ] 🟥 50 ms RMS frames on Mic B; show per-word dBFS + speaker label live
+- [x] 🟩 **Step 1: Scaffold repo**
+  - [x] 🟩 Vite + React + TS app; ESLint; Vitest; scripts `dev`, `build`, `lint`, `typecheck`, `test`
+  - [x] 🟩 `api/` folder for Vercel functions (web-standard `GET(request)` handlers; Vite dev middleware serves them locally, no Vercel CLI needed); `.env.example` (`ASSEMBLYAI_API_KEY`)
+- [ ] 🟨 **Step 2: Token endpoints (Claude-managed secrets)** — built + unit-tested with mocked fetch; **live call pending API key**
+  - [x] 🟩 `GET /api/token/agent` → AAI `GET /v1/token` (Bearer auth; 120 s redemption, 600 s session cap)
+  - [x] 🟩 STT browser token endpoint verified in docs (`GET streaming.assemblyai.com/v3/token`, raw-key auth) → `GET /api/token/stt`
+  - [ ] 🟥 Live-verify both endpoints return a token with the real key
+- [ ] 🟨 **Step 3: Spike page (`/spike`, throwaway)** — built, typechecked, linted; **first live run pending API key + mic**
+  - [x] 🟩 Mic A + Mic B with different constraints; page reports whether Chrome honoured both (`getSettings()`)
+  - [x] 🟩 Room stream → Realtime STT `speaker_labels: true`, `max_speakers: 3` (`universal-3-6-pro`)
+  - [x] 🟩 Agent stream → Voice Agent session via stored `agent_id`; replies played with barge-in flush
+  - [x] 🟩 50 ms RMS frames on Mic B → per-word dBFS + per-speaker loudness table (near/far at 6 dB gap)
+  - [x] 🟩 `scripts/spike-agents.mjs` creates the managed + LLM-Gateway agents for the latency comparison
+  - [ ] 🟥 First live run: both sockets connect, transcripts appear, agent speaks
 - [ ] 🟥 **Step 4: Trials (Adwik + phone)**
   - [ ] 🟥 Generate 3 test clips (2 coaching, 1 benign) with any TTS for the spike
   - [ ] 🟥 10 whisper trials at ~1.5 m → record background identification rate

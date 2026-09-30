@@ -1,0 +1,268 @@
+/**
+ * /spike — Phase 0 de-risking page (throwaway; removed in Phase 4).
+ * Runs the dual-stream session and shows the evidence we need for the go/no-go decision.
+ */
+import { useMemo, useRef, useState } from 'react';
+import { SpikeSession, type AgentLine, type RoomTurn } from './session';
+import { speakerLoudness, unmatchedWords } from './metrics';
+import './spike.css';
+
+type AgentKind = 'managed' | 'gateway';
+const STORE_KEY = 'sv.spike.agents';
+/** A room-stream word counts as "heard by the agent" if a customer transcript landed within this window. */
+const MATCH_WINDOW_MS = 8000;
+/** Provisional near/far threshold from the spec; the trials tell us whether it is right. */
+const FAR_GAP_DB = 6;
+
+function loadAgents(): Record<AgentKind, string> {
+  try {
+    return { managed: '', gateway: '', ...JSON.parse(localStorage.getItem(STORE_KEY) ?? '{}') };
+  } catch {
+    return { managed: '', gateway: '' };
+  }
+}
+
+const fmtDb = (n: number | null) => (n === null ? '—' : n.toFixed(0));
+const avg = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null);
+
+export default function Spike() {
+  const [agents, setAgents] = useState(loadAgents);
+  const [kind, setKind] = useState<AgentKind>('managed');
+  const [running, setRunning] = useState(false);
+  const [status, setStatus] = useState('Idle.');
+  const [error, setError] = useState('');
+  const [constraints, setConstraints] = useState<{ a: MediaTrackSettings; b: MediaTrackSettings } | null>(null);
+  const [roomTurns, setRoomTurns] = useState<RoomTurn[]>([]);
+  const [roomPartial, setRoomPartial] = useState('');
+  const [agentLines, setAgentLines] = useState<AgentLine[]>([]);
+  const [latencies, setLatencies] = useState<Record<AgentKind, number[]>>({ managed: [], gateway: [] });
+  const [trials, setTrials] = useState({ hit: 0, miss: 0, ttsLeak: 0, benignFlagged: 0 });
+  const session = useRef<SpikeSession | null>(null);
+
+  const setAgentId = (k: AgentKind, id: string) => {
+    const next = { ...agents, [k]: id.trim() };
+    setAgents(next);
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(next));
+    } catch {
+      /* storage unavailable — ids just won't persist */
+    }
+  };
+
+  async function start() {
+    setError('');
+    setRoomTurns([]);
+    setAgentLines([]);
+    setRoomPartial('');
+    const s = new SpikeSession(agents[kind], {
+      status: setStatus,
+      constraints: (a, b) => setConstraints({ a, b }),
+      roomPartial: setRoomPartial,
+      roomTurn: (t) => setRoomTurns((prev) => [...prev, t]),
+      agentLine: (l) => setAgentLines((prev) => [...prev, l]),
+      latency: (ms) => setLatencies((prev) => ({ ...prev, [kind]: [...prev[kind], ms] })),
+      error: setError,
+    });
+    session.current = s;
+    setRunning(true);
+    try {
+      await s.start();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      await stop();
+    }
+  }
+
+  async function stop() {
+    await session.current?.stop();
+    session.current = null;
+    setRunning(false);
+  }
+
+  // Room words the agent stream never heard, judged per turn against nearby customer transcripts.
+  const turnsView = useMemo(
+    () =>
+      roomTurns.map((t) => {
+        const agentTexts = agentLines
+          .filter((l) => l.role === 'customer' && Math.abs(l.at - t.at) <= MATCH_WINDOW_MS)
+          .map((l) => l.text);
+        const missing = new Set(unmatchedWords(t.words.map((w) => w.text), agentTexts).map((w) => w.toLowerCase()));
+        return { turn: t, missing };
+      }),
+    [roomTurns, agentLines],
+  );
+
+  const loudness = useMemo(() => speakerLoudness(roomTurns.flatMap((t) => t.words)), [roomTurns]);
+
+  const honoured = constraints ? constraints.b.noiseSuppression === false && constraints.a.noiseSuppression !== false : null;
+
+  const results = () =>
+    JSON.stringify(
+      {
+        chromeHonouredDifferentConstraints: honoured,
+        micA: constraints?.a,
+        micB: constraints?.b,
+        speakerLoudness: loudness,
+        farGapThresholdDb: FAR_GAP_DB,
+        trials,
+        whisperHitRate: trials.hit + trials.miss ? trials.hit / (trials.hit + trials.miss) : null,
+        latencyMsAvg: { managed: avg(latencies.managed), gateway: avg(latencies.gateway) },
+        latencySamples: latencies,
+      },
+      null,
+      2,
+    );
+
+  return (
+    <main className="spike">
+      <h1>Phase 0 spike — dual-stream second-voice test</h1>
+      <p className="muted">
+        Headphones OFF (laptop speakers), phone playing a coaching clip ~1.5 m away. Go = whisper identified in ≥ 7 of 10
+        trials.
+      </p>
+
+      <section className="row">
+        {(['managed', 'gateway'] as const).map((k) => (
+          <label key={k}>
+            <input type="radio" checked={kind === k} disabled={running} onChange={() => setKind(k)} /> {k} agent id{' '}
+            <input
+              value={agents[k]}
+              disabled={running}
+              onChange={(e) => setAgentId(k, e.target.value)}
+              placeholder="run: node scripts/spike-agents.mjs"
+            />
+          </label>
+        ))}
+        {running ? (
+          <button onClick={stop}>Stop</button>
+        ) : (
+          <button onClick={start} disabled={!agents[kind]}>
+            Start
+          </button>
+        )}
+        <span>{status}</span>
+      </section>
+      {error && <p className="error">{error}</p>}
+
+      <section>
+        <h2>
+          1 · Did Chrome honour different constraints?{' '}
+          {honoured === null ? '' : honoured ? '✅ yes' : '❌ no — use single-stream fallback'}
+        </h2>
+        {constraints && (
+          <table>
+            <thead>
+              <tr>
+                <th></th>
+                <th>echoCancellation</th>
+                <th>noiseSuppression</th>
+                <th>autoGainControl</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(['a', 'b'] as const).map((k) => (
+                <tr key={k}>
+                  <td>Mic {k.toUpperCase()}</td>
+                  <td>{String(constraints[k].echoCancellation)}</td>
+                  <td>{String(constraints[k].noiseSuppression)}</td>
+                  <td>{String(constraints[k].autoGainControl)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <div className="cols">
+        <section>
+          <h2>
+            2 · Room stream (speaker · dBFS per word · <span className="missing">orange = agent never heard it</span>)
+          </h2>
+          {turnsView.map(({ turn, missing }, i) => (
+            <p key={i} className="turn">
+              <b>[{turn.speaker}]</b>{' '}
+              {turn.words.map((w, j) => (
+                <span
+                  key={j}
+                  className={missing.has(w.text.toLowerCase()) ? 'missing' : ''}
+                  title={`speaker ${w.speaker}, ${fmtDb(w.dbfs)} dBFS`}
+                >
+                  {w.text}
+                  <sub>
+                    {w.speaker}·{fmtDb(w.dbfs)}
+                  </sub>{' '}
+                </span>
+              ))}
+            </p>
+          ))}
+          {roomPartial && <p className="muted">… {roomPartial}</p>}
+        </section>
+
+        <section>
+          <h2>3 · Agent stream (what the agent heard / said)</h2>
+          {agentLines.map((l, i) => (
+            <p key={i} className={l.role}>
+              <b>{l.role}:</b> {l.text}
+            </p>
+          ))}
+        </section>
+      </div>
+
+      <section>
+        <h2>4 · Loudness per speaker label (far = ≥ {FAR_GAP_DB} dB below loudest)</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>label</th>
+              <th>words</th>
+              <th>median dBFS</th>
+              <th>gap to loudest</th>
+              <th>verdict</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(loudness).map(([label, l]) => (
+              <tr key={label}>
+                <td>{label}</td>
+                <td>{l.words}</td>
+                <td>{l.medianDbfs.toFixed(1)}</td>
+                <td>{l.gapDb.toFixed(1)} dB</td>
+                <td>{l.gapDb >= FAR_GAP_DB ? 'FAR (background)' : 'near'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>5 · Trials — press after each whisper clip</h2>
+        <div className="row">
+          <button onClick={() => setTrials((t) => ({ ...t, hit: t.hit + 1 }))}>✔ whisper identified as background</button>
+          <button onClick={() => setTrials((t) => ({ ...t, miss: t.miss + 1 }))}>✘ missed</button>
+          <button onClick={() => setTrials((t) => ({ ...t, ttsLeak: t.ttsLeak + 1 }))}>
+            agent voice leaked into room stream
+          </button>
+          <button onClick={() => setTrials((t) => ({ ...t, benignFlagged: t.benignFlagged + 1 }))}>
+            benign chatter looked like coaching
+          </button>
+          <button onClick={() => setTrials({ hit: 0, miss: 0, ttsLeak: 0, benignFlagged: 0 })}>reset</button>
+        </div>
+        <p>
+          hit {trials.hit} · miss {trials.miss} · rate{' '}
+          <b>{trials.hit + trials.miss ? Math.round((100 * trials.hit) / (trials.hit + trials.miss)) + '%' : '—'}</b> ·
+          TTS leaks {trials.ttsLeak} · benign flagged {trials.benignFlagged}
+        </p>
+      </section>
+
+      <section>
+        <h2>6 · Agent reply latency (customer stops → first reply audio)</h2>
+        <p>
+          managed: <b>{avg(latencies.managed) ?? '—'} ms</b> (n={latencies.managed.length}) · gateway:{' '}
+          <b>{avg(latencies.gateway) ?? '—'} ms</b> (n={latencies.gateway.length})
+        </p>
+      </section>
+
+      <button onClick={() => void navigator.clipboard.writeText(results())}>Copy results JSON</button>
+    </main>
+  );
+}
