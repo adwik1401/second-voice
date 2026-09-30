@@ -124,6 +124,12 @@ export class CheckState {
     this.echo = true;
     this.emit();
   }
+  /** Room-only speech qualified by a tie-breaker: a second voice, not coaching on its own (no points beyond +10). */
+  noteRoomOnly(evidence: CoachEvidence) {
+    this.coachEvidence.push(evidence);
+    this.backgroundSpeech = true;
+    this.emit();
+  }
   noteBackgroundSpeech() {
     this.backgroundSpeech = true;
     this.emit();

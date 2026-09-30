@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AgentSessionDeps, AgentSessionEvents } from './agent-client';
+import type { RoomListenerEvents } from './room-listener';
 import type { DetectInput, DetectResult } from './detect-client';
 import type { TranscriptLine, TransferIntent } from './types';
 import { VoiceCheck } from './voice-check';
@@ -21,13 +22,17 @@ const COACH: DetectResult = { isCoaching: true, type: 'secrecy_instruction', quo
 const flush = () => new Promise((r) => setTimeout(r, 0));
 const line = (role: TranscriptLine['role'], text: string, at: number): TranscriptLine => ({ role, text, at });
 
-function setup(over: { detect?: (i: DetectInput) => DetectResult; openMic?: () => Promise<MediaStream>; now?: () => number } = {}) {
+function setup(over: { detect?: (i: DetectInput) => DetectResult; openMic?: () => Promise<MediaStream>; now?: () => number; room?: boolean; roomStartRejects?: boolean } = {}) {
   const track = { stop: vi.fn() };
   const stream = { getTracks: () => [track] } as unknown as MediaStream;
   const session = { start: vi.fn(async () => {}), end: vi.fn(), sendSystemMessage: vi.fn(), requestReply: vi.fn() };
   let events!: AgentSessionEvents;
   let sessionDeps!: Pick<AgentSessionDeps, 'fetchToken' | 'toolHandler'>;
   const detect = vi.fn(async (i: DetectInput) => (over.detect ? over.detect(i) : NOTHING));
+  // The room stream is opt-in for tests: by default there is none, so nothing tries to reach the network.
+  const room = { start: vi.fn(async () => { if (over.roomStartRejects) throw new Error('boom'); }), end: vi.fn() };
+  let roomEvents!: RoomListenerEvents;
+  const scheduled: (() => void)[] = [];
   const vc = new VoiceCheck(transfer, prefetched, {
     openMic: over.openMic ?? (async () => stream),
     createSession: (d, e) => {
@@ -35,10 +40,28 @@ function setup(over: { detect?: (i: DetectInput) => DetectResult; openMic?: () =
       events = e;
       return session;
     },
+    createRoom: over.room
+      ? (_d, e) => {
+          roomEvents = e;
+          return room;
+        }
+      : null,
     detect,
     now: over.now ?? (() => 1000),
+    schedule: (fn) => void scheduled.push(fn),
   });
-  return { vc, session, track, detect, events: () => events, deps: () => sessionDeps };
+  return {
+    vc, session, track, detect, room,
+    events: () => events,
+    roomEvents: () => roomEvents,
+    deps: () => sessionDeps,
+    /** Runs every pending room-turn evaluation (the settle delay, collapsed). */
+    settleRoom: async () => {
+      while (scheduled.length) scheduled.shift()!();
+      await flush();
+      await flush();
+    },
+  };
 }
 
 describe('starting', () => {
@@ -278,5 +301,154 @@ describe('ending', () => {
     events().fatal('connection lost');
     vc.end();
     expect(vc.status).toBe('failed');
+  });
+});
+
+
+// ---- the room stream (Plan Steps 18-19) --------------------------------------------------------------------
+
+const rw = (text: string, from: number, speaker: string, dbfs: number | null = -27) =>
+  text.split(' ').map((t, i) => ({ text: t, start: from + i * 400, end: from + i * 400 + 300, speaker, dbfs }));
+const COACH_TEXT = 'Do not tell the bank why just say it is for your client';
+/** Detector stub: coaching only for the room stream's coach words and the agent stream's "Tell her…" line. */
+const coachDetector = (i: DetectInput) =>
+  i.utterances[0].text.startsWith('Do not tell') || i.utterances[0].text.startsWith('Tell her') ? COACH : NOTHING;
+
+describe('room stream', () => {
+  it('starts after the agent with the same shared microphone stream, and reports its status', async () => {
+    const { vc, room, roomEvents } = setup({ room: true });
+    await vc.start();
+    expect(room.start).toHaveBeenCalledOnce();
+    roomEvents().status('live');
+    expect(vc.roomStatus).toBe('live');
+  });
+
+  it('does not start when the check already failed (no microphone)', async () => {
+    const { vc, room } = setup({
+      room: true,
+      openMic: async () => {
+        throw new Error('denied');
+      },
+    });
+    await vc.start();
+    expect(room.start).not.toHaveBeenCalled();
+  });
+
+  it('shows what the room heard, and does NOT flag the customer’s own words (explained by the agent transcript)', async () => {
+    const { vc, events, roomEvents, settleRoom } = setup({ room: true });
+    await vc.start();
+    events().transcript(line('customer', 'I want to make a payment today', 12_000));
+    roomEvents().turn({ at: 12_500, speaker: 'A', words: rw('I want to make a payment today', 0, 'A') }, 11_000);
+    await settleRoom();
+    expect(vc.roomLines).toHaveLength(1);
+    expect(vc.roomLines[0]).toMatchObject({ speaker: 'A', text: 'I want to make a payment today', flagged: false });
+    expect(vc.state.backgroundSpeech).toBe(false);
+  });
+
+  it('flags room-only coaching from a different voice: second voice noted, coaching recorded, agent asks the gentle question', async () => {
+    const { vc, events, roomEvents, settleRoom, session } = setup({ room: true, detect: coachDetector });
+    await vc.start();
+    events().transcript(line('customer', 'I want to make a payment today', 12_000));
+    roomEvents().turn({ at: 12_500, speaker: 'A', words: rw('I want to make a payment today', 0, 'A') }, 11_000); // the customer: establishes label A
+    roomEvents().turn({ at: 20_000, speaker: 'B', words: rw(COACH_TEXT, 9000, 'B') }, 11_000); // someone else
+    await settleRoom();
+
+    expect(vc.roomLines[1].flagged).toBe(true);
+    expect(vc.state.backgroundSpeech).toBe(true);
+    const evidence = vc.state.snapshot().coachEvidence;
+    expect(evidence.map((e) => e.source)).toEqual(expect.arrayContaining(['room_only', 'rules']));
+    expect(vc.state.coachingConfidence).toBe(0.9);
+    expect(session.requestReply).toHaveBeenCalledOnce();
+  });
+
+  it('still checks an unexplained run for coaching language when NO tie-breaker agrees (content is the core signal)', async () => {
+    const { vc, events, roomEvents, settleRoom } = setup({ room: true, detect: coachDetector });
+    await vc.start();
+    events().transcript(line('customer', 'I want to make a payment today', 12_000));
+    roomEvents().turn({ at: 12_500, speaker: 'A', words: rw('I want to make a payment today', 0, 'A') }, 11_000);
+    roomEvents().turn({ at: 20_000, speaker: 'A', words: rw(COACH_TEXT, 9000, 'A') }, 11_000); // same label, same loudness
+    await settleRoom();
+    expect(vc.state.backgroundSpeech).toBe(false); // no tie-breaker → not "a second voice"
+    expect(vc.state.coachingConfidence).toBe(0.9); // …but the words themselves are coaching
+    expect(vc.roomLines[1].flagged).toBe(true);
+  });
+
+  it('ignores an unexplained run that is neither a second voice nor coaching', async () => {
+    const { vc, events, roomEvents, settleRoom } = setup({ room: true });
+    await vc.start();
+    events().transcript(line('customer', 'I want to make a payment today', 12_000));
+    roomEvents().turn({ at: 12_500, speaker: 'A', words: rw('I want to make a payment today', 0, 'A') }, 11_000);
+    roomEvents().turn({ at: 20_000, speaker: 'A', words: rw('dinner will be ready at seven', 9000, 'A') }, 11_000);
+    await settleRoom();
+    expect(vc.state.backgroundSpeech).toBe(false);
+    expect(vc.state.coachingConfidence).toBeNull();
+    expect(vc.roomLines[1].flagged).toBe(false);
+  });
+
+  it('counts a coach heard by BOTH streams once, and the agent speaks up once', async () => {
+    const { vc, events, roomEvents, settleRoom, session } = setup({ room: true, detect: coachDetector });
+    await vc.start();
+    events().transcript(line('customer', "Tell her it's for a car deposit. Don't mention me.", 20_000)); // agent stream
+    await flush();
+    roomEvents().turn({ at: 20_400, speaker: 'B', words: rw("Tell her it's for a car deposit Don't mention me", 0, 'B') }, 19_500); // same audio, room stream
+    await settleRoom();
+    expect(vc.state.snapshot().coachEvidence.filter((e) => e.source === 'rules')).toHaveLength(1);
+    expect(session.requestReply).toHaveBeenCalledTimes(1);
+  });
+
+  it('judges each room run only once', async () => {
+    const { vc, events, roomEvents, settleRoom, detect } = setup({ room: true, detect: coachDetector });
+    await vc.start();
+    events().transcript(line('customer', 'I want to make a payment today', 12_000));
+    roomEvents().turn({ at: 12_500, speaker: 'A', words: rw('I want to make a payment today', 0, 'A') }, 11_000);
+    roomEvents().turn({ at: 20_000, speaker: 'B', words: rw(COACH_TEXT, 9000, 'B') }, 11_000);
+    await settleRoom();
+    const calls = detect.mock.calls.filter((c) => c[0].utterances[0].source === 'room_stream').length;
+    await settleRoom();
+    expect(detect.mock.calls.filter((c) => c[0].utterances[0].source === 'room_stream').length).toBe(calls);
+  });
+
+  it('echo works for a coach only the ROOM heard: the customer repeats it later on the agent stream', async () => {
+    const { vc, events, roomEvents, settleRoom } = setup({ room: true, detect: (i) => (i.utterances[0].text.startsWith('Tell her') ? COACH : NOTHING) });
+    await vc.start();
+    events().transcript(line('customer', 'I want to make a payment today', 12_000));
+    roomEvents().turn({ at: 12_500, speaker: 'A', words: rw('I want to make a payment today', 0, 'A') }, 11_000);
+    roomEvents().turn({ at: 20_000, speaker: 'B', words: rw("Tell her it's for a car deposit Don't mention me", 9000, 'B') }, 11_000);
+    await settleRoom();
+    events().transcript(line('customer', "It's for a car deposit.", 26_000));
+    await flush();
+    expect(vc.state.echo).toBe(true);
+  });
+
+  it('a room stream that fails (or never starts) never disturbs the check', async () => {
+    const a = setup({ room: true });
+    await a.vc.start();
+    a.roomEvents().status('unavailable');
+    expect(a.vc.roomStatus).toBe('unavailable');
+    expect(a.vc.failureReason).toBeNull();
+    expect(a.vc.state.decision).toBeNull();
+
+    const b = setup({ room: true, roomStartRejects: true });
+    await b.vc.start();
+    await flush();
+    expect(b.vc.roomStatus).toBe('unavailable');
+    expect(b.vc.status).not.toBe('failed');
+  });
+
+  it('ends the room stream whenever the check ends, is interrupted, or the customer asks for a person', async () => {
+    const ended = setup({ room: true });
+    await ended.vc.start();
+    ended.vc.end();
+    expect(ended.room.end).toHaveBeenCalled();
+
+    const fatal = setup({ room: true });
+    await fatal.vc.start();
+    fatal.events().fatal('connection lost');
+    expect(fatal.room.end).toHaveBeenCalled();
+
+    const human = setup({ room: true });
+    await human.vc.start();
+    human.vc.requestHuman();
+    expect(human.room.end).toHaveBeenCalled();
   });
 });

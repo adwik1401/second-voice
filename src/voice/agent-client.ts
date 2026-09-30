@@ -23,7 +23,8 @@ const RESUME_FAILED_CODES = new Set(['session_not_found', 'session_forbidden']);
 
 export interface SocketLike {
   readyState: number;
-  send(data: string): void;
+  /** Text for protocol messages; binary for raw audio frames (the room stream). */
+  send(data: string | ArrayBuffer): void;
   close(): void;
   onopen: (() => void) | null;
   onmessage: ((e: { data: string }) => void) | null;

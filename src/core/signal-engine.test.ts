@@ -147,6 +147,38 @@ describe('findRoomOnlySpeech', () => {
     expect(findRoomOnlySpeech(i)).toEqual([]);
   });
 
+  it('does not let an explained stopword split a coach sentence (live test: "…for [a] car deposit")', () => {
+    // The customer said "a" earlier, so "a" is 'explained' — but that must not cut the coach's sentence in two.
+    const i = input({
+      roomTurns: [
+        turn(T0 + 3000, 'A', words('hi I want to make a payment', 1000, 'A', -27)),
+        turn(T0 + 13_000, 'B', words("Tell her it's for a car deposit Don't mention me", 9000, 'B', -28)),
+      ],
+      conversation: [customer(T0 + 3500, 'hi I want to make a payment')],
+    });
+    const out = findRoomOnlySpeech(i);
+    expect(out).toHaveLength(1);
+    expect(out[0].text).toBe("Tell her it's for a car deposit Don't mention me");
+  });
+
+  it('drops explained stopwords at the end of a run rather than tacking them on', () => {
+    const i = input({
+      roomTurns: [turn(T0 + 13_000, 'B', words('secret plans for tonight a', 9000, 'B'))],
+      conversation: [customer(T0 + 13_000, 'a')],
+    });
+    expect(findRoomOnlySpeech(i)[0].text).toBe('secret plans for tonight');
+  });
+
+  it('ignores a run made only of stopwords — "no it is for me" is not evidence of anyone', () => {
+    const i = input({ roomTurns: [turn(T0 + 13_000, 'B', words('no it is for me', 9000, 'B'))] });
+    expect(findRoomOnlySpeech(i)).toEqual([]);
+  });
+
+  it('needs at least two real words in a run', () => {
+    const i = input({ roomTurns: [turn(T0 + 13_000, 'B', words('it is for the payment', 9000, 'B'))] });
+    expect(findRoomOnlySpeech(i)).toEqual([]);
+  });
+
   it('does not flag words inside a customer-speech window', () => {
     const i = scenario('B', -28, { customerSpeechWindows: [{ start: T0 + 8800, end: T0 + 14_500 }] });
     expect(findRoomOnlySpeech(i)).toEqual([]);

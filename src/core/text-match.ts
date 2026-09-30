@@ -63,6 +63,11 @@ export function matchesAny(word: string, tokens: string[]): boolean {
   return tokens.some((t) => wordsMatch(word, t));
 }
 
+/** Is this a very common word that says nothing about who spoke it? */
+export function isStopword(text: string): boolean {
+  return STOPWORDS.has(normalizeToken(text));
+}
+
 export function contentTokens(text: string): string[] {
   return tokenize(text).filter((t) => !STOPWORDS.has(t));
 }

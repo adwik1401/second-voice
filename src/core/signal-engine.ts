@@ -10,7 +10,7 @@
  * Everything here is pure: no clocks, no network. Callers pass wall-clock times in.
  */
 import { FAR_GAP_DB, median, tagProximity } from './loudness';
-import { contentOverlap, matchesAny, tokenize } from './text-match';
+import { contentOverlap, isStopword, matchesAny, tokenize } from './text-match';
 import type { ConversationTurn, RoomTurn, RoomWord, TimeWindow } from './types';
 
 // ---- Classifying room words ------------------------------------------------------------------------
@@ -27,6 +27,8 @@ export type WordClass = 'customer_window' | 'customer_match' | 'agent_echo' | 'u
 export interface EngineOptions {
   /** Consecutive unexplained words needed to form a room-only utterance (scattered mishearings are noise). */
   minRunWords: number;
+  /** …of which at least this many must be real words, not stopwords: "it is for me" is not evidence of anyone. */
+  minContentWords: number;
   /** Slack added around each customer-speech window. */
   windowPadMs: number;
   /** How far a customer transcript may sit from a room word to explain it. */
@@ -42,6 +44,7 @@ export interface EngineOptions {
 
 export const DEFAULT_ENGINE_OPTIONS: EngineOptions = {
   minRunWords: 4,
+  minContentWords: 2,
   windowPadMs: 500,
   customerMatchMs: 10_000,
   agentMatchMs: 15_000,
@@ -168,15 +171,29 @@ export function findRoomOnlySpeech(input: EngineInput): RoomUtterance[] {
   const base = customerBaseline(turns, o);
   const out: RoomUtterance[] = [];
 
+  // A word like "a" or "the" is "explained" whenever the customer said it anywhere nearby — that says nothing about
+  // who spoke THIS one. So an explained stopword inside a stretch of unexplained words bridges it rather than
+  // breaking it (live test: "Tell her it's for [a] car deposit" was being split at "a").
+  const bridgeable = (cw: ClassifiedWord) => (cw.cls === 'customer_match' || cw.cls === 'agent_echo') && isStopword(cw.word.text);
+
   for (const turn of turns) {
     let run: ClassifiedWord[] = [];
+    let bridge: ClassifiedWord[] = [];
     const flush = () => {
-      if (run.length >= o.minRunWords) out.push(toUtterance(turn, run, base, o));
+      const content = run.filter((r) => !isStopword(r.word.text)).length;
+      if (run.length >= o.minRunWords && content >= o.minContentWords) out.push(toUtterance(turn, run, base, o));
       run = [];
+      bridge = [];
     };
     for (const cw of turn.words) {
-      if (cw.cls === 'unexplained') run.push(cw);
-      else flush();
+      if (cw.cls === 'unexplained') {
+        run.push(...bridge, cw);
+        bridge = [];
+      } else if (run.length > 0 && bridgeable(cw)) {
+        bridge.push(cw); // kept only if more unexplained words follow; trailing ones are dropped by flush()
+      } else {
+        flush();
+      }
     }
     flush();
   }
