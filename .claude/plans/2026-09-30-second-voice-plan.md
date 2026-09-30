@@ -50,7 +50,7 @@ Each code phase follows:
   - [x] 🟩 Spike now subtracts the agent's own words from the "background" highlight (run 1 showed agent TTS leaking into the room stream)
   - [x] 🟩 Generate test clips (3 coaching, 1 benign × normal/quiet) — `scripts/make-spike-clips.ps1`, served at `/spike-clips/index.html`
   - [x] 🟩 Switch spike to one shared mic stream (AEC on, NS/AGC off); constraint probe added — Chrome grants all 8 combinations when opened alone
-  - [ ] 🟥 10 trials: phone plays a coach clip at normal volume ~1.5 m while the victim answers the agent out loud (+ a few clips while the agent talks) → press ✔/✘ for "coach speech visible to the detector" (room-only words OR in the agent transcript)
+  - [ ] 🟨 **Range test (replaces the 1.5 m trials — 1.5 m failed in run 5; coach speech captured only with the phone near the laptop):** 30 / 60 / 100 cm × phone volume 50% / 100%, ~5 plays each; gate ≥ 7 of 10 visible at ~60 cm. (original wording follows) 10 trials: phone plays a coach clip at normal volume ~1.5 m while the victim answers the agent out loud (+ a few clips while the agent talks) → press ✔/✘ for "coach speech visible to the detector" (room-only words OR in the agent transcript)
   - [x] 🟩 Confirmed the agent's own voice is absent from the room stream with AEC on (run 4: zero leaked words)
   - [ ] 🟥 Confirm the agent's own TTS is not flagged as background; benign clip not flagged as coaching
   - [ ] 🟨 Measure agent reply latency: managed model vs LLM Gateway (Claude) → pick one — **managed measured: avg 1,745 ms (n = 6, steady state 1.3–1.8 s); gateway still to measure**
