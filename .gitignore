@@ -21,3 +21,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.log
+
+# Generated spike test clips (recreate with scripts/make-spike-clips.ps1)
+public/spike-clips/*.wav

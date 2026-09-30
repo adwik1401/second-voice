@@ -48,7 +48,7 @@ Each code phase follows:
   - [x] 🟩 First live run: both sockets connect, transcripts appear, agent speaks (2026-09-30; findings in wiki `spike-results.md`)
 - [ ] 🟨 **Step 4: Trials (Adwik + phone)**
   - [x] 🟩 Spike now subtracts the agent's own words from the "background" highlight (run 1 showed agent TTS leaking into the room stream)
-  - [ ] 🟥 Generate 3 test clips (2 coaching, 1 benign) with any TTS for the spike
+  - [x] 🟩 Generate test clips (3 coaching, 1 benign × normal/quiet) — `scripts/make-spike-clips.ps1`, served at `/spike-clips/index.html`
   - [ ] 🟥 10 whisper trials at ~1.5 m → record background identification rate
   - [ ] 🟥 Confirm the agent's own TTS is not flagged as background; benign clip not flagged as coaching
   - [ ] 🟥 Measure agent reply latency: managed model vs LLM Gateway (Claude) → pick one
