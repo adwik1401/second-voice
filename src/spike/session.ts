@@ -86,7 +86,7 @@ export class SpikeSession {
      *         Chrome silently switch echo cancellation OFF for it (spike run 3).
      * false → the original two-stream experiment (Mic A default processing, Mic B raw).
      */
-    private sharedMic: boolean,
+    private opts: { sharedMic: boolean; agc: boolean },
     private ev: SessionEvents,
   ) {}
 
@@ -96,8 +96,9 @@ export class SpikeSession {
 
     let micA: MediaStream;
     let micB: MediaStream;
-    if (this.sharedMic) {
-      micA = micB = await openMic({ echoCancellation: true, noiseSuppression: false, autoGainControl: false });
+    if (this.opts.sharedMic) {
+      // AGC is the range lever: with it off a distant voice stays faint; with it on Chrome boosts it.
+      micA = micB = await openMic({ echoCancellation: true, noiseSuppression: false, autoGainControl: this.opts.agc });
       this.streams.push(micA);
     } else {
       // Two streams from one device with deliberately different processing; the browser may ignore the difference.
@@ -194,8 +195,11 @@ export class SpikeSession {
         case 'reply.audio':
           if (msg.data) this.player?.enqueue(base64ToPcm16(msg.data));
           if (this.speechStoppedAt !== null) {
-            this.ev.latency(Math.round(performance.now() - this.speechStoppedAt));
+            const ms = Math.round(performance.now() - this.speechStoppedAt);
             this.speechStoppedAt = null;
+            // Run 6 logged two 0 ms samples: audio of an earlier reply was still streaming when a fresh
+            // speech.stopped arrived. No real reply starts within 200 ms, so treat those as glitches.
+            if (ms >= 200) this.ev.latency(ms);
           }
           break;
         case 'reply.done':

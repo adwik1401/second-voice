@@ -34,6 +34,8 @@ export default function Spike() {
   const [running, setRunning] = useState(false);
   const [shared, setShared] = useState(true);
   const [ranShared, setRanShared] = useState(true);
+  const [agc, setAgc] = useState(false);
+  const [ranAgc, setRanAgc] = useState(false);
   const [status, setStatus] = useState('Idle.');
   const [error, setError] = useState('');
   const [constraints, setConstraints] = useState<{ a: MediaTrackSettings; b: MediaTrackSettings } | null>(null);
@@ -88,7 +90,8 @@ export default function Spike() {
     setAgentLines([]);
     setRoomPartial('');
     setRanShared(shared);
-    const s = new SpikeSession(agents[kind], shared, {
+    setRanAgc(agc);
+    const s = new SpikeSession(agents[kind], { sharedMic: shared, agc }, {
       status: setStatus,
       constraints: (a, b) => setConstraints({ a, b }),
       roomPartial: setRoomPartial,
@@ -135,7 +138,7 @@ export default function Spike() {
   // Shared mode: did Chrome grant AEC on + NS off + AGC off? Two-stream mode: did the two streams differ as asked?
   const honoured = constraints
     ? ranShared
-      ? constraints.b.echoCancellation === true && constraints.b.noiseSuppression === false && constraints.b.autoGainControl === false
+      ? constraints.b.echoCancellation === true && constraints.b.noiseSuppression === false && constraints.b.autoGainControl === ranAgc
       : constraints.b.noiseSuppression === false && constraints.a.noiseSuppression !== false
     : null;
 
@@ -143,6 +146,7 @@ export default function Spike() {
     JSON.stringify(
       {
         sharedMic: ranShared,
+        agcRequested: ranAgc,
         constraintsAsRequested: honoured,
         micA: constraints?.a,
         micB: constraints?.b,
@@ -188,7 +192,11 @@ export default function Spike() {
         )}
         <label>
           <input type="checkbox" checked={shared} disabled={running} onChange={(e) => setShared(e.target.checked)} /> one shared
-          mic (AEC on, NS/AGC off)
+          mic (AEC on, NS off)
+        </label>
+        <label>
+          <input type="checkbox" checked={agc} disabled={running} onChange={(e) => setAgc(e.target.checked)} /> auto gain (AGC)
+          on — may extend range
         </label>
         <span>{status}</span>
       </section>
@@ -196,7 +204,7 @@ export default function Spike() {
 
       <section>
         <h2>
-          1 · {ranShared ? 'Did Chrome grant AEC on + NS off + AGC off?' : 'Did Chrome honour different constraints?'}{' '}
+          1 · {ranShared ? `Did Chrome grant AEC on + NS off + AGC ${ranAgc ? 'on' : 'off'}?` : 'Did Chrome honour different constraints?'}{' '}
           {honoured === null ? '' : honoured ? '✅ yes' : '❌ no'}
         </h2>
         {constraints && (
