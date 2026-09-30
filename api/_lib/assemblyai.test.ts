@@ -42,16 +42,30 @@ describe('tokenResponse', () => {
     expect(res.status).toBe(500);
   });
 
-  it('returns { token } with no-store caching on success', async () => {
+  it('returns { token } with no-store caching on success (streaming needs no agent id)', async () => {
     const res = await tokenResponse('stt', { ASSEMBLYAI_API_KEY: 'KEY' }, stubFetch({ token: 'abc' }));
     expect(res.status).toBe(200);
     expect(res.headers.get('Cache-Control')).toBe('no-store');
     expect(await res.json()).toEqual({ token: 'abc' });
   });
 
+  it('the agent token also carries the stored agent id', async () => {
+    const res = await tokenResponse('agent', { ASSEMBLYAI_API_KEY: 'KEY', AGENT_ID: 'agent_123' }, stubFetch({ token: 'abc' }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ token: 'abc', agentId: 'agent_123' });
+  });
+
+  it('the agent token is a 500 when AGENT_ID is not configured — and mints nothing', async () => {
+    const f = stubFetch({ token: 'abc' });
+    const res = await tokenResponse('agent', { ASSEMBLYAI_API_KEY: 'KEY' }, f);
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toMatch(/AGENT_ID/);
+    expect(f).not.toHaveBeenCalled();
+  });
+
   it('returns 502 and does not leak upstream detail or the key on failure', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const res = await tokenResponse('agent', { ASSEMBLYAI_API_KEY: 'SECRET' }, stubFetch({}, 500));
+    const res = await tokenResponse('agent', { ASSEMBLYAI_API_KEY: 'SECRET', AGENT_ID: 'agent_123' }, stubFetch({}, 500));
     const text = await res.text();
     expect(res.status).toBe(502);
     expect(text).not.toContain('SECRET');

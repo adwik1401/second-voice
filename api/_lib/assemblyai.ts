@@ -7,6 +7,9 @@
  *
  * Both take `expires_in_seconds` (redemption window) and `max_session_duration_seconds`
  * (cap on the resulting session) and return `{ token }`.
+ *
+ * The agent token response also carries `agentId` (env AGENT_ID, from `node scripts/create-agent.mjs`) so the
+ * browser never hard-codes it and a redeploy with a new agent needs no code change.
  */
 
 export type TokenKind = 'agent' | 'stt';
@@ -57,9 +60,12 @@ export async function tokenResponse(
   const apiKey = env.ASSEMBLYAI_API_KEY;
   if (!apiKey) return Response.json({ error: 'ASSEMBLYAI_API_KEY is not configured' }, { status: 500 });
 
+  const agentId = env.AGENT_ID;
+  if (kind === 'agent' && !agentId) return Response.json({ error: 'AGENT_ID is not configured' }, { status: 500 });
+
   try {
     const token = await mintToken(kind, apiKey, fetchImpl);
-    return Response.json({ token }, { headers: { 'Cache-Control': 'no-store' } });
+    return Response.json(kind === 'agent' ? { token, agentId } : { token }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     console.error(err);
     return Response.json({ error: 'Could not mint token' }, { status: 502 });
