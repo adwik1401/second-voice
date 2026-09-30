@@ -91,7 +91,7 @@ Phone: Scammer Simulator page (pre-generated AI-voice clips)
 ### 7.1 Bank App Shell
 - **Purpose:** fictional UK bank UI ("Larkmoor Bank" — fictional; name checked 2026-09-30, no bank/fintech uses it. "Harbourline" rejected: collides with HarborLine fintech and Harbourline finance app). Account overview, payees, transfer form.
 - **Interface:** emits `TransferIntent { amountGBP, payeeId | newPayee{name, sortCode, accountNumber}, reference, purpose? }`. Calls `precheck(intent) → { requiresVoiceCheck: boolean, reasons: string[] }`.
-- **Voice Check trigger rule:** amount ≥ £1,000 **and** (new payee **or** CoP result ≠ `MATCH`), or amount ≥ 3× customer's 90-day max outgoing.
+- **Voice Check trigger rule:** amount ≥ £1,000 **and** (new payee **or** CoP result ≠ `MATCH`, `UNAVAILABLE` included), or amount ≥ 3× customer's 90-day max outgoing (only when the customer has outgoing history — with none, 3× zero would trigger on everything). Implementation: `src/core/precheck.ts`.
 - **Depends on:** Mock Bank Services.
 
 ### 7.2 Voice Check Client (agent stream)
@@ -119,14 +119,14 @@ Phone: Scammer Simulator page (pre-generated AI-voice clips)
 - **Design basis (spike runs 1–3):** coaching *content* is visible in whichever stream hears it. In run 3 the coach's "Tell her it's for a car deposit. Don't mention me." appeared in the **agent stream's customer transcript** and the agent answered it as if the customer had said it (`voice_focus` passes a loud phone voice when the customer is silent). So the core is content and echo; comparing streams is supporting evidence.
 - **Evidence signals, strongest first:**
   1. **Content cues (core):** `/api/detect` classifies utterances from **either stream** for coaching language — second-person imperatives, scripted answers, "don't tell the bank", a third party instructing the customer.
-  2. **Echo:** the customer's next agent-stream utterance within 10 s overlaps a coach utterance heard on the room stream (normalised token overlap ≥ 0.5, or LLM-judged paraphrase) → `ECHO`: *the customer repeated what the coach said.* Strongest single signal.
+  2. **Echo:** a customer turn 2–10 s after a coach utterance overlaps it (overlap coefficient of content words ≥ 0.5 against the shorter text, ≥ 2 shared content words, stopwords ignored; LLM-judged paraphrase is a later upgrade) → `ECHO`: *the customer repeated what the coach said.* Strongest single signal. The 2 s minimum gap exists because the same coach audio is often transcribed by BOTH streams within a second or two (run 4) — that is not the customer repeating anything.
   3. **Room-only speech (supporting):** room-stream words with no fuzzy match in the customer or agent transcripts, outside customer-speech windows (below). Indicates a voice the agent stream excluded — expected when coach and customer overlap.
   4. **Tie-breakers only:** diarization label ≠ the customer's; loudness ≥ 6 dB below the customer median. Neither may decide alone (run 1: one customer labelled A, B and C; run 3: speaker medians −33/−31/−32 dBFS).
 - **Agent-echo subtraction (backstop):** room words matching the agent's own `transcript.agent` text within ~15 s are `agent_echo`, never evidence. The room STT mis-hears the leak (e.g. "Larkmoor's" → "Lark, the Morning King's"), so matching must be fuzzy. Timing-only suppression is rejected: a coach may speak while the agent is speaking.
 - **Matching must be fuzzy and digit-aware:** observed disagreements between streams — "Larkmoor's"/"Larkmore's", "100202022"/"10020202222", and a quiet "Continue." heard as "Some fruits, fruits." at −35 dBFS. Exact matching would score all of these as a second voice.
 - **Customer-speech window attribution:** room words inside a window where the agent stream's `input.speech.started` → `input.speech.stopped` marked the customer speaking are attributed to the customer even if the transcripts disagree. Use speech events, not transcript arrival times (a merged agent-stream transcript can land > 8 s after the room turn).
 - **Loudness uses medians** (the first word of a session reads as a transient: −19 dBFS vs a −30 baseline).
-- **Rule:** coaching evidence = content cue (confidence ≥ 0.7) **or** `ECHO` **or** (room-only speech of ≥ 4 unmatched words **and** ≥ 1 tie-breaker). Evidence feeds the Risk Scorer (§7.7).
+- **Rule:** coaching evidence = content cue (confidence ≥ 0.7) **or** `ECHO` **or** (room-only speech — a run of ≥ 4 **consecutive** unexplained words, so scattered mishearings don't count — **and** ≥ 1 tie-breaker). Evidence feeds the Risk Scorer (§7.7).
 - **Interface:** pure fns `findRoomOnlySpeech(roomTurns, customerTurns, agentTurns, speechWindows, taggedWords) → RoomUtterance[]`, `detectEcho(utterance, nextCustomerTurn) → EchoResult`.
 
 ### 7.6 Coaching Detector
@@ -156,7 +156,7 @@ Phone: Scammer Simulator page (pre-generated AI-voice clips)
 | Any bank tool failed (unverified) | +10 |
 
 - **Decisions:** `RELEASE` (< 30) · `COOLING_OFF` 24 h hold (30–69) · `ESCALATE` to human fraud officer (≥ 70).
-- **Hard triggers → ESCALATE regardless:** ECHO + coaching; customer says they were told to lie / move money to a "safe account" / contacted by "police" or "the bank".
+- **Hard triggers → ESCALATE regardless:** ECHO + coaching; customer says they were told to lie / move money to a "safe account" / contacted by "police" or "the bank". The displayed score is lifted to at least 70 so the gauge agrees with the outcome. Implementation: `src/core/risk-scorer.ts`.
 - **Customer-protective invariant:** the agent never states a flat refusal. Every non-release offers a human and explains the hold; customer can always proceed via human review.
 
 ### 7.8 Agent Injector
@@ -216,7 +216,7 @@ Phone: Scammer Simulator page (pre-generated AI-voice clips)
 
 ## 11. Testing & evaluation
 
-**Unit (Vitest):** Loudness Tagger, Signal Engine (`findBackground`, `detectEcho`), Risk Scorer (all bands + hard triggers + invariant), precheck rule, transcript fuzzy matcher.
+**Unit (Vitest):** Loudness Tagger, Signal Engine (`classifyRoomWords`, `findRoomOnlySpeech`, `detectEcho`, `coachingEvidence`), Risk Scorer (all bands + hard triggers + invariant), precheck rule, transcript fuzzy matcher.
 **Endpoint tests:** `/api/token/agent`, `/api/token/stt` (mock AAI), `/api/detect` (mock Gateway; schema + timeout path), `/api/bank/*`.
 **Scenario evaluation (manual, repeatable via Simulator), 5 runs each:**
 | Scenario | Expected |

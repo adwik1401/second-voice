@@ -1,6 +1,6 @@
 # Second Voice — Implementation Plan
 
-**Overall Progress:** `9%` (3 / 32 steps done · Phase 0 in progress: Step 4: run 4 looks positive (coach speech captured, agent leak gone); formal 10-trial count + latency comparison remaining)
+**Overall Progress:** `22%` (7 / 32 steps done · Phase 1 done · Phase 0 gate proceeded past by Adwik's decision: only 3 counted trials + observations; range/latency/gateway checks still open)
 
 **Spec:** [`.claude/specs/2026-09-30-second-voice-design.md`](../specs/2026-09-30-second-voice-design.md) · **Repo:** https://github.com/adwik1401/second-voice
 
@@ -59,17 +59,17 @@ Each code phase follows:
   - [ ] 🟥 < 7 of 10 → pivot to content + echo on the agent-stream transcript only; pitch "detects coached answers"
   - [ ] 🟥 If Chrome rejects dual constraints → single raw stream + Web Audio noise gate on the agent path
 
-### Phase 1 — Core Logic (pure functions + tests)
+### Phase 1 — Core Logic (pure functions + tests) 🟩 Done (2026-09-30)
 > `[DELEGATING → Codex /execute]` → `[DELEGATING → Codex /run-code]` → `[DELEGATING → Codex /review]`
 
-- [ ] 🟥 **Step 6: Loudness Tagger (tie-breaker only)** — `tagWords(words, rmsFrames, sessionStartMs)`; medians; `far` if ≥ 6 dB below the customer median
-- [ ] 🟥 **Step 7: Signal Engine**
-  - [ ] 🟥 Fuzzy transcript matcher (±1.5 s window)
-  - [ ] 🟥 `findRoomOnlySpeech()` — fuzzy + digit-aware matching, customer-speech window attribution (`input.speech.started/stopped`), agent-echo subtraction; evidence rule per spec §7.5
-  - [ ] 🟥 `detectEcho()` — token overlap ≥ 0.5 within 10 s
-- [ ] 🟥 **Step 8: Risk Scorer** — points table, bands (<30 / 30–69 / ≥70), hard triggers, tool-failure +10
-- [ ] 🟥 **Step 9: Precheck rule** — ≥ £1,000 and (new payee or CoP ≠ MATCH), or ≥ 3× the 90-day max
-- [ ] 🟥 Unit tests for every function above, including all bands and hard triggers
+- [x] 🟩 **Step 6: Loudness Tagger (tie-breaker only)** — `src/core/loudness.ts`: `wordDbfs`, `median`, `tagProximity`, `tagWords(words, rmsFrames, customerMedianDbfs)`; `far` if ≥ 6 dB below the customer median (no `sessionStartMs` needed: word timings already share the frame clock)
+- [x] 🟩 **Step 7: Signal Engine** — `src/core/text-match.ts`, `src/core/signal-engine.ts`
+  - [x] 🟩 Fuzzy, digit-aware word matcher + stopword-aware content overlap (`text-match.ts`)
+  - [x] 🟩 `classifyRoomWords()` / `findRoomOnlySpeech()` — fuzzy + digit-aware matching, customer-speech window attribution (`input.speech.started/stopped`), agent-echo subtraction; evidence rule per spec §7.5
+  - [x] 🟩 `detectEcho()` — overlap coefficient ≥ 0.5 and ≥ 2 shared content words, 2–10 s after the coach utterance; plus `coachingEvidence()` rule
+- [x] 🟩 **Step 8: Risk Scorer** (`src/core/risk-scorer.ts`) — points table, bands (<30 / 30–69 / ≥70), hard triggers, tool-failure +10
+- [x] 🟩 **Step 9: Precheck rule** (`src/core/precheck.ts`) — ≥ £1,000 and (new payee or CoP ≠ MATCH), or ≥ 3× the 90-day max
+- [x] 🟩 Unit tests for every function above, including all bands and hard triggers — 108 tests passing; mutation-checked (4 deliberate breaks each failed the matching test)
 
 ### Phase 2 — Serverless API + Mock Bank
 > `[DELEGATING → Codex /execute]` → `[DELEGATING → Codex /run-code]` → `[DELEGATING → Codex /review]`
