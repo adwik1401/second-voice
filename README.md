@@ -10,7 +10,7 @@ A scam-interrupt voice agent for UK banks, built on [AssemblyAI](https://www.ass
 
 ## The problem
 
-In an authorised push payment (APP) scam the victim makes the payment themselves, often while a scammer stays on the phone and **coaches them through the bank's checks**: "tell her it's for a car deposit, don't mention me." Scripted in-app warnings get clicked through, and a human intervention call can be coached too. UK APP fraud losses were reported at [£576.4m in 2025](https://www.lbc.co.uk/article/cc6e8bcbe80c4ed880c98b12318a14e3-5HjdbZk_2/), and since October 2024 UK banks must reimburse victims (up to £85,000 per claim), so the cost now lands on the bank.
+In an authorised push payment (APP) scam the victim makes the payment themselves, often while a scammer stays on the phone and **coaches them through the bank's checks**: "tell her it's for a car deposit, don't mention me." Scripted in-app warnings get clicked through, and a human intervention call can be coached too. UK banks reported APP fraud losses of [£576.4m in 2025, up 19%](https://www.ukfinance.org.uk/policy-and-guidance/reports/annual-fraud-report-2026) (UK Finance Annual Fraud Report 2026). Since 7 October 2024 the [Payment Systems Regulator's scheme](https://www.psr.org.uk/media/rhelv4op/ps25-5-app-scams-reimbursement-consolidated-policy-statement-may-2025.pdf) requires the sending bank to reimburse eligible victims (up to £85,000 per claim), with the cost shared 50:50 with the receiving bank, so the loss now lands on the banks.
 
 ## What it does
 
