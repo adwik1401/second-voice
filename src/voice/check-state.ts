@@ -163,8 +163,8 @@ export class CheckState {
     return this.decision;
   }
 
-  /** Safe fallback when the call cannot continue: hold, never release (spec §9). */
-  decideInterrupted(): RiskResult {
+  /** Safe fallback when the call cannot continue: hold, never release (spec §9). `reason` is the audit line. */
+  decideInterrupted(reason = 'Voice check was interrupted, so the payment is held'): RiskResult {
     const scored = score(this.toRiskSignals());
     this.decision =
       scored.decision === 'RELEASE'
@@ -172,7 +172,7 @@ export class CheckState {
             ...scored,
             decision: 'COOLING_OFF',
             score: Math.max(scored.score, 30),
-            reasons: [...scored.reasons, { label: 'Voice check was interrupted, so the payment is held', points: Math.max(0, 30 - scored.score) }],
+            reasons: [...scored.reasons, { label: reason, points: Math.max(0, 30 - scored.score) }],
             offerHuman: true,
           }
         : scored;

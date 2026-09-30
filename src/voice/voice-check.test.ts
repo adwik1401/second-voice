@@ -215,6 +215,52 @@ describe('decisions reach the UI', () => {
   });
 });
 
+describe('"I\'d rather speak to a person"', () => {
+  it('ends the call, releases the mic and concludes with a hold and a human', async () => {
+    const { vc, session, track } = setup();
+    await vc.start();
+    vc.requestHuman();
+    expect(vc.state.humanRequested).toBe('customer asked for a person');
+    expect(vc.state.decision).toMatchObject({ offerHuman: true });
+    expect(vc.state.decision?.decision).not.toBe('RELEASE');
+    // (the lift-to-hold audit line only appears when the score alone would have released — see check-state tests)
+    expect(session.end).toHaveBeenCalled();
+    expect(track.stop).toHaveBeenCalled();
+    expect(vc.status).toBe('ended');
+  });
+
+  it('does nothing once a decision exists', async () => {
+    const { vc, deps } = setup();
+    await vc.start();
+    await deps().toolHandler('decide_payment', {});
+    const before = vc.state.decision;
+    vc.requestHuman();
+    expect(vc.state.decision).toBe(before);
+    expect(vc.state.humanRequested).toBeNull();
+  });
+});
+
+describe('reference', () => {
+  it('is a stable LRK-#### reference the customer can quote', () => {
+    const { vc } = setup();
+    expect(vc.reference).toMatch(/^LRK-\d{4}$/);
+    expect(vc.reference).toBe(vc.reference);
+  });
+});
+
+describe('version (React snapshot)', () => {
+  it('increments on every change and never goes backwards', async () => {
+    const { vc, events } = setup();
+    const v0 = vc.version;
+    await vc.start();
+    events().status('live');
+    const v1 = vc.version;
+    events().transcript(line('agent', 'Hello', 1));
+    expect(v1).toBeGreaterThan(v0);
+    expect(vc.version).toBeGreaterThan(v1);
+  });
+});
+
 describe('ending', () => {
   it('ends the session, releases the mic, and is safe to repeat', async () => {
     const { vc, session, track } = setup();

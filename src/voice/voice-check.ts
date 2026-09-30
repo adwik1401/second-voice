@@ -49,6 +49,8 @@ export class VoiceCheck {
   /** Wall-clock windows in which the agent stream heard the customer speaking (input for the Signal Engine). */
   readonly customerWindows: TimeWindow[] = [];
   status: SessionStatus = 'idle';
+  /** Shown to the customer if the payment is held, so they can quote it to the colleague who calls. */
+  readonly reference = `LRK-${Math.floor(1000 + Math.random() * 9000)}`;
   /** Set when the check could not run normally; the outcome is then a hold. */
   failureReason: string | null = null;
 
@@ -59,6 +61,7 @@ export class VoiceCheck {
   private readonly coachUtterances: { text: string; at: number }[] = [];
   private readonly listeners = new Set<() => void>();
   private readonly now: () => number;
+  private changes = 0;
 
   constructor(
     readonly transfer: TransferIntent,
@@ -78,7 +81,13 @@ export class VoiceCheck {
     return () => this.listeners.delete(listener);
   }
   private emit() {
+    this.changes++;
     for (const l of this.listeners) l();
+  }
+
+  /** Increments on every change — a cheap, stable snapshot for React's useSyncExternalStore. */
+  get version(): number {
+    return this.changes;
   }
 
   /** The conversation so far, in the shape the Signal Engine consumes. */
@@ -113,6 +122,17 @@ export class VoiceCheck {
       this.now,
     );
     await this.session.start(this.stream);
+  }
+
+  /** "I'd rather speak to a person": ends the call and concludes with a hold and a human. No-op once decided. */
+  requestHuman(): void {
+    if (this.state.decision) return;
+    this.state.requestHuman('customer asked for a person');
+    this.session?.end();
+    this.stopMic();
+    this.status = 'ended';
+    this.state.decideInterrupted('The customer asked to speak to a person, so the payment is held');
+    this.emit();
   }
 
   /** Ends the conversation and releases the microphone. Safe to call more than once. */

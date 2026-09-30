@@ -134,6 +134,12 @@ describe('interrupted check (spec §9: fail safe = hold, never release)', () => 
     expect(d.reasons.reduce((t, r) => t + r.points, 0)).toBe(d.score);
   });
 
+  it('uses a custom audit line when given', () => {
+    const s = new CheckState(transfer({ amountGBP: 1200 }));
+    s.setCop({ result: 'MATCH', accountType: 'business' });
+    expect(s.decideInterrupted('The customer asked to speak to a person').reasons.at(-1)!.label).toBe('The customer asked to speak to a person');
+  });
+
   it('keeps a worse outcome as it was', () => {
     const s = scamState();
     s.noteCoaching({ at: 1, source: 'rules', type: 'script_feeding', quote: 'x', confidence: 0.9 });

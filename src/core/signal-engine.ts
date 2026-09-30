@@ -186,7 +186,10 @@ export function findRoomOnlySpeech(input: EngineInput): RoomUtterance[] {
 // ---- Echo ------------------------------------------------------------------------------------------
 
 export interface EchoOptions {
-  /** The customer must repeat within this long after the coach utterance. */
+  /**
+   * The customer must repeat within this long after the coach utterance. 30 s, not 10: in the live end-to-end run the
+   * agent's own gentle question (~8 s of speech) sat between the coach and the customer's repeat (17 s apart).
+   */
   windowMs: number;
   /**
    * …and no sooner than this. The same coach audio is often heard by BOTH streams (spike run 4); the second
@@ -197,7 +200,7 @@ export interface EchoOptions {
   minRatio: number;
 }
 
-export const DEFAULT_ECHO_OPTIONS: EchoOptions = { windowMs: 10_000, minGapMs: 2_000, minMatched: 2, minRatio: 0.5 };
+export const DEFAULT_ECHO_OPTIONS: EchoOptions = { windowMs: 30_000, minGapMs: 2_000, minMatched: 2, minRatio: 0.5 };
 
 export interface EchoResult {
   isEcho: boolean;

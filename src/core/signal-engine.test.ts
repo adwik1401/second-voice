@@ -165,8 +165,12 @@ describe('detectEcho', () => {
     expect(detectEcho(coach, [customer(10_600, "Tell her it's for a car deposit.")]).isEcho).toBe(false);
   });
 
+  it('still catches a repeat that comes after the agent has spoken in between (17 s — seen live)', () => {
+    expect(detectEcho(coach, [customer(27_000, "It's for a car deposit.")]).isEcho).toBe(true);
+  });
+
   it('ignores a repeat that comes too late', () => {
-    expect(detectEcho(coach, [customer(25_000, "It's for a car deposit.")]).isEcho).toBe(false);
+    expect(detectEcho(coach, [customer(45_000, "It's for a car deposit.")]).isEcho).toBe(false);
   });
 
   it('ignores unrelated answers and a single shared content word', () => {
