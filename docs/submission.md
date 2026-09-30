@@ -16,12 +16,12 @@ Second Voice is a short Voice Check that opens in the banking app when a payment
 
 A transparent, deterministic points table (never the LLM) decides: release, pause for 24 hours, or escalate to a fraud specialist. There is never a flat refusal, every hold offers a human, and a fraud officer watches the same call live with an itemised "why this score" and an exportable audit record. It fails safe (mic denied or connection lost means a hold, never a release), stores no audio, and an honest customer is approved after a short conversation.
 
-It was tested end to end in headless Chrome against the live AssemblyAI APIs (coached scam: escalated in 7 of 7 runs; honest customer: released in 2 of 2), with 447 automated tests. Limitations are stated plainly: it hears coaching at conversational volume within arm's reach of the laptop, not whispers across a room.
+It was tested end to end in headless Chrome against the live AssemblyAI APIs (coached scam: escalated in 7 of 7 runs; honest customer: released in 2 of 2), with 455 automated tests. Limitations are stated plainly: it hears coaching at conversational volume within arm's reach of the laptop, not whispers across a room.
 
 **Technology tags:** AssemblyAI Voice Agent API · Realtime Speech-to-Text API · (React, TypeScript, Vite, Vercel)
 **Category:** Fintech · Fraud prevention · Voice AI
 
-**Links:** GitHub https://github.com/adwik1401/second-voice · Demo app: https://second-voice-larkmoor.netlify.app · Video: `<upload link>` (files: `docs/video/second-voice-demo.mp4`, 85 s, and `docs/video/second-voice-teaser.mp4`, 23 s) · Slides: `docs/Second-Voice-deck.pptx`
+**Links:** GitHub https://github.com/adwik1401/second-voice · Demo app: https://second-voice-larkmoor.netlify.app · Video: `<upload link>` (files: `docs/video/second-voice-demo.mp4`, 85 s, and `docs/video/second-voice-teaser.mp4`, 23 s) · Slides: `docs/Second-Voice-deck.pdf` (PDF; the editable .pptx is alongside)
 
 ## Demo video
 
@@ -37,7 +37,7 @@ Setup: laptop with speakers (no headphones) in a quiet room, Chrome at `<your UR
 | 0:20–0:50 | App: click **£1,200 to a plumber**, Send, Start voice check | Customer lines: "It's for a new boiler, a plumber my neighbour recommended." "Yes, I've used him before." "No, nobody's pressuring me." Result: **Payment approved**, officer score 10. "An honest customer isn't interrogated: a short chat and it's released." |
 | 0:50–2:15 | Click **£8,000 to a car dealer**, Send, Start | Say: "It's for a deposit on a car." Show the officer panel: bank signals alone = **60, a hold**. Then on the phone tap **Play a coached call**. Point at the panel: **coaching detected**, score **85+**. The agent asks the gentle question aloud. Answer: "No… it's for a car deposit." Panel: **customer repeated the coach's words**, **100**, hard trigger. Customer sees **A specialist will call you**. |
 | 2:15–2:40 | Officer panel → **Download audit record** / **Print view** | "Every point is explained line by line, for the fraud team and the regulator. No audio is stored." |
-| 2:40–3:00 | Slide 6 or 8 | "Built on AssemblyAI's Voice Agent API and Realtime Speech-to-Text. 447 tests, and live end-to-end runs. The limits are stated: conversational volume, within arm's reach. Scammers coach their victims — Second Voice hears the coach." |
+| 2:40–3:00 | Slide 6 or 8 | "Built on AssemblyAI's Voice Agent API and Realtime Speech-to-Text. 455 tests, and live end-to-end runs. The limits are stated: conversational volume, within arm's reach. Scammers coach their victims — Second Voice hears the coach." |
 
 Tips: do two takes; if the agent's reply is slow, cut in the edit. Keep the officer panel visible throughout. If the phone voice is too quiet, raise the phone volume, not the laptop's. The rules catch every line on the simulator, so the demo is repeatable.
 
@@ -59,6 +59,6 @@ Tips: do two takes; if the agent's reply is slow, cut in the edit. Keep the offi
 - [ ] Repo is public and has the MIT licence (it does); README renders with the screenshot
 - [ ] Demo URL works on a fresh browser, microphone prompt appears, scenario S4 escalates
 - [ ] Video uploaded (YouTube unlisted is fine) and plays
-- [ ] Cover image uploaded (`docs/images/cover.png`), slides uploaded (export the .pptx to PDF if the form wants PDF)
+- [ ] Cover image uploaded (`docs/images/cover.png`), slides uploaded as the PDF (`docs/Second-Voice-deck.pdf`)
 - [ ] Long description pasted; tags set; category set
 - [ ] Submitted with a buffer — aim to press Submit by **7:30 PM IST**

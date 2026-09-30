@@ -17,3 +17,4 @@
 - Netlify deployment support: `netlify.toml` and one `/api/*` function dispatching to the shared handlers (8 new tests; 455 total). Vercel config kept.
 - Demo video: 85 s HyperFrames cut of a real recorded run with Kokoro narration (`docs/video/second-voice-demo.mp4`) and a 23 s `/brag --voice` teaser (`docs/video/second-voice-teaser.mp4`); compositions in `videos/demo/` and `brag-output/`.
 - Deployed to Netlify (personal account): https://second-voice-larkmoor.netlify.app. Smoke tests and a full S4 run pass on production.
+- Deck exported to PDF (docs/Second-Voice-deck.pdf) for the lablab form; refreshed stale test count (455) and real-phone bullet.
