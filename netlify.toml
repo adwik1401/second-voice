@@ -1,0 +1,27 @@
+# Netlify deployment. The API lives in netlify/functions/api.mts (routes /api/* to the handlers in api/).
+# Environment variables (set in the Netlify UI, never committed): ASSEMBLYAI_API_KEY, AGENT_ID.
+# Optional: DETECT_MODEL (+ DETECT_STRUCTURED=0) for the LLM second opinion.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Single-page app: /simulator and any other path serve index.html. Real files and the /api function win first.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Permissions-Policy = "microphone=(self)"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"

@@ -14,3 +14,4 @@
 - Phase 5: `/simulator` — phone-side scammer that speaks coaching lines live (browser speech synthesis); script tested against the detector; spike clip assets removed; 17 new tests (433 total).
 - Fix: cue analysis is negation-aware and record_answer's paraphrase is no longer mined (an honest customer was being flagged for secrecy); live scenario runs S4 x5 ESCALATE, S2 x2 RELEASE; 14 new tests (447 total).
 - Submission pack (`docs/`): cover, 10-slide deck, form text, video script, deploy guide; README cites UK Finance + PSR; functions import with explicit `.js` extensions for Vercel's strict ESM runtime (verified under plain Node ESM with a negative control).
+- Netlify deployment support: `netlify.toml` and one `/api/*` function dispatching to the shared handlers (8 new tests; 455 total). Vercel config kept.

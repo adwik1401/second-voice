@@ -79,9 +79,13 @@ node scripts/eval-detect.mjs      # detector accuracy on labelled + held-out cas
 
 430+ unit tests cover the scoring, signal engine, agent protocol (tool-result ordering, reconnect, fail-safes), tools, audit export and the simulator script. The whole flow was also run end to end in headless Chrome with a fake microphone against the live Voice Agent API.
 
-## Deploy (Vercel)
+## Deploy (Netlify, or Vercel)
 
-Import the repo at vercel.com/new (framework: Vite). Add the environment variables `ASSEMBLYAI_API_KEY` and `AGENT_ID`. `vercel.json` handles routing. Optional: `DETECT_MODEL` (+ `DETECT_STRUCTURED=0` for models without `response_format`) to enable the LLM second opinion.
+**Netlify:** app.netlify.com → Add new site → Import from GitHub → this repo. Build settings come from `netlify.toml`; the whole API is one function (`netlify/functions/api.mts`) that serves `/api/*` through the same handlers used everywhere else. Add the environment variables `ASSEMBLYAI_API_KEY` and `AGENT_ID`, then redeploy.
+
+**Vercel:** vercel.com/new (framework: Vite); `vercel.json` handles routing; same two environment variables.
+
+Optional on either: `DETECT_MODEL` (+ `DETECT_STRUCTURED=0` for models without `response_format`) to enable the LLM second opinion.
 
 ## Project layout
 

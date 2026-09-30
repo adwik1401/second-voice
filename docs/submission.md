@@ -37,11 +37,11 @@ Setup: laptop with speakers (no headphones) in a quiet room, Chrome at `<your UR
 
 Tips: do two takes; if the agent's reply is slow, cut in the edit. Keep the officer panel visible throughout. If the phone voice is too quiet, raise the phone volume, not the laptop's. The rules catch every line on the simulator, so the demo is repeatable.
 
-## Deploy (Vercel) — about 5 minutes
+## Deploy (Netlify) — about 5 minutes
 
-1. vercel.com/new → import `adwik1401/second-voice` (framework: Vite; build and output defaults are right; `vercel.json` is included).
-2. Environment variables: `ASSEMBLYAI_API_KEY` (your key) and `AGENT_ID` (the line in your `.env.local`). Leave `DETECT_MODEL` unset (rules only — the most reliable for a demo).
-3. Deploy, then run the smoke test (replace the URL):
+1. Log in to your **personal** Netlify account in the browser (not the QCIN work account), then app.netlify.com → Add new site → Import an existing project → GitHub → `adwik1401/second-voice`. Build settings are read from `netlify.toml`.
+2. Site configuration → Environment variables: `ASSEMBLYAI_API_KEY` (your key) and `AGENT_ID` (the line in your `.env.local`). Leave `DETECT_MODEL` unset (rules only — the most reliable for a demo). Then Deploys → Trigger deploy.
+3. Send Claude the URL, or run the smoke test yourself (replace the URL):
    ```bash
    curl -s https://YOUR-URL/api/token/agent            # expect {"token":"…","agentId":"agent_…"}
    curl -s "https://YOUR-URL/api/bank/payee-check?sortCode=99-12-34&accountNumber=71829035&name=Northgate%20Autos%20Ltd"   # {"result":"NO_MATCH",…}

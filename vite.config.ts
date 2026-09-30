@@ -50,6 +50,6 @@ export default defineConfig(({ mode }) => {
   Object.assign(process.env, loadEnv(mode, process.cwd(), ''));
   return {
     plugins: [react(), devApi()],
-    test: { environment: 'node', include: ['api/**/*.test.ts', 'src/**/*.test.ts', 'scripts/**/*.test.ts'] },
+    test: { environment: 'node', include: ['api/**/*.test.ts', 'src/**/*.test.ts', 'scripts/**/*.test.ts', 'netlify/**/*.test.ts'] },
   };
 });
