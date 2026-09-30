@@ -21,7 +21,7 @@ It was tested end to end in headless Chrome against the live AssemblyAI APIs (co
 **Technology tags:** AssemblyAI Voice Agent API · Realtime Speech-to-Text API · (React, TypeScript, Vite, Vercel)
 **Category:** Fintech · Fraud prevention · Voice AI
 
-**Links:** GitHub https://github.com/adwik1401/second-voice · Demo app: `<your Vercel URL>` · Video: `<upload link>` (files: `docs/video/second-voice-demo.mp4`, 85 s, and `docs/video/second-voice-teaser.mp4`, 23 s) · Slides: `docs/Second-Voice-deck.pptx`
+**Links:** GitHub https://github.com/adwik1401/second-voice · Demo app: https://second-voice-larkmoor.netlify.app · Video: `<upload link>` (files: `docs/video/second-voice-demo.mp4`, 85 s, and `docs/video/second-voice-teaser.mp4`, 23 s) · Slides: `docs/Second-Voice-deck.pptx`
 
 ## Demo video
 

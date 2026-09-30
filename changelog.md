@@ -16,3 +16,4 @@
 - Submission pack (`docs/`): cover, 10-slide deck, form text, video script, deploy guide; README cites UK Finance + PSR; functions import with explicit `.js` extensions for Vercel's strict ESM runtime (verified under plain Node ESM with a negative control).
 - Netlify deployment support: `netlify.toml` and one `/api/*` function dispatching to the shared handlers (8 new tests; 455 total). Vercel config kept.
 - Demo video: 85 s HyperFrames cut of a real recorded run with Kokoro narration (`docs/video/second-voice-demo.mp4`) and a 23 s `/brag --voice` teaser (`docs/video/second-voice-teaser.mp4`); compositions in `videos/demo/` and `brag-output/`.
+- Deployed to Netlify (personal account): https://second-voice-larkmoor.netlify.app. Smoke tests and a full S4 run pass on production.

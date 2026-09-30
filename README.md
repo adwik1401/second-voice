@@ -8,6 +8,8 @@ A scam-interrupt voice agent for UK banks, built on [AssemblyAI](https://www.ass
 
 *Left: what the customer sees. Right: the fraud officer's view — the live score, every signal, an itemised "why", and the coaching evidence.*
 
+**Live demo:** https://second-voice-larkmoor.netlify.app (open `/simulator` on a phone)
+
 **Watch:** [`docs/video/second-voice-demo.mp4`](docs/video/second-voice-demo.mp4) (85 s, a real recorded run with narration) · [`docs/video/second-voice-teaser.mp4`](docs/video/second-voice-teaser.mp4) (23 s). The agent's voice and every on-screen signal are live output from the real system; the customer and scammer voices are synthetic (text-to-speech).
 
 ## The problem
