@@ -1,6 +1,6 @@
 # Second Voice — Implementation Plan
 
-**Overall Progress:** `31%` (10 / 32 steps done · Phases 1–2 done · Phase 0 gate proceeded past by Adwik's decision: only 3 counted trials + observations; range/latency/gateway checks still open)
+**Overall Progress:** `47%` (15 / 32 steps done · Phases 1–3 done · Phase 0 gate proceeded past by Adwik's decision: only 3 counted trials + observations; range/latency/gateway checks still open)
 
 **Spec:** [`.claude/specs/2026-09-30-second-voice-design.md`](../specs/2026-09-30-second-voice-design.md) · **Repo:** https://github.com/adwik1401/second-voice
 
@@ -79,14 +79,14 @@ Each code phase follows:
 - [x] 🟩 **Step 12: Agent setup script** — `scripts/agent-config.ts` + `scripts/create-agent.mjs` (create / `--update <id>`); live agent `agent_be6f8fc68a1544f49d7f04b83eb88d10`: 6 client tools, `voice` AND `output.voice` = anna (a live read-back caught `output.voice` defaulting to "ivy"), far-field, keyterms; managed LLM; turn detection left on default per AssemblyAI docs
 - [x] 🟩 Endpoint tests for all `api/*` (mock gateway incl. timeout / 429 / malformed; live-verified `POST /api/detect` and bank routes) — 234 tests passing
 
-### Phase 3 — Bank App + Voice Check Agent
+### Phase 3 — Bank App + Voice Check Agent 🟩 Done (2026-09-30) — verified live in headless Chrome
 > `[DELEGATING → Codex /execute]` → `[DELEGATING → Codex /run-code]` → `[DELEGATING → Codex /review]`
 
-- [ ] 🟥 **Step 13: Bank App Shell** — Larkmoor account overview, payees, transfer form → precheck → Voice Check modal
-- [ ] 🟥 **Step 14: Voice Check Client** — token → WS → `session.update` with `agent_id`; audio in/out; interruption flush; transcript events
-- [ ] 🟥 **Step 15: Client-side tools** — `get_customer_profile`, `check_payee`, `get_payee_risk`, `record_answer`, `decide_payment` (returns the scorer's decision), `request_human`; `is_error` path
-- [ ] 🟥 **Step 16: Agent Injector** — `inject(note, speakNow)`; max 1 per 20 s; non-accusatory instructions
-- [ ] 🟥 **Step 17: Error handling** per spec §9 (reconnect once → COOLING_OFF; mic denied → human review)
+- [x] 🟩 **Step 13: Bank App Shell** — `src/app/` (BankApp, VoiceCheckModal, tested `transfer.ts` flow, 4 one-click demo scenarios, `?scenario=S4` prefill); fail-safe: bank unreachable → nothing sent; CoP failure → unverified → still gets the check
+- [x] 🟩 **Step 14: Voice Check Client** — `src/voice/agent-client.ts` (AgentSession) + `voice-check.ts` (controller); `/api/token/agent` now also returns the agent id
+- [x] 🟩 **Step 15: Client-side tools** (`src/voice/tools.ts`) — `get_customer_profile`, `check_payee`, `get_payee_risk`, `record_answer`, `decide_payment` (returns the scorer's decision), `request_human`; `is_error` path
+- [x] 🟩 **Step 16: Agent Injector** (`src/voice/injector.ts`) — trusted `system`-role context + coaching note; max 1 proactive per 20 s; non-accusatory. Live: "Is there someone there with you right now? … the bank will never ask you to keep a payment a secret or to lie to us."
+- [x] 🟩 **Step 17: Error handling** per spec §9 — one `session.resume` reconnect with a fresh token, then fail-safe hold; mic denied / no token / resume failure → hold; connect timeout
 
 ### Phase 4 — Room Listener + Signal Pipeline + Fraud Officer Panel
 > `[DELEGATING → Codex /execute]` → `[DELEGATING → Codex /run-code]` → `[DELEGATING → Codex /review]`

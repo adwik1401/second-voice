@@ -9,3 +9,4 @@
 - Spike: AGC toggle for range testing; latency samples under 200 ms discarded as glitches.
 - Phase 1: `src/core/` — loudness tie-breaker helpers, fuzzy digit-aware text matching, Signal Engine (word classification, room-only speech, echo, evidence rule), precheck rule, risk scorer; 93 new tests.
 - Phase 2: mock bank API (`/api/bank/*`) with demo personas; `POST /api/detect` — rules-first coaching detector (`src/core/coaching-rules.ts`) with an opt-in LLM second opinion; `scripts/create-agent.mjs` + `scripts/agent-config.ts` (6 client tools, voice pinned); coaching floor in the risk scorer; 126 new tests (234 total).
+- Phase 3: Larkmoor bank app + Voice Check modal (`src/app/`), voice layer (`src/voice/`: agent session with resume/tool-ordering, controller, tools, injector, check state, answer analysis, detect client), `/api/token/agent` returns the agent id, echo window widened to 30 s; 75 new tests (371 total); verified live in headless Chrome.
