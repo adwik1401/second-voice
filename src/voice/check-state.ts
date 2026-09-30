@@ -100,10 +100,15 @@ export class CheckState {
     this.emit();
   }
 
+  /**
+   * Stores the agent's record of an answer. It is deliberately NOT mined for cues: it is the agent's paraphrase
+   * ("nobody is asking them to keep it secret"), which can name a cue only to deny it, and every line the customer
+   * actually said is already mined (`absorbCustomerText`). Found live: an honest customer was flagged for secrecy.
+   */
   recordAnswer(topic: AnswerTopic, answer: string, at: number) {
     this.answers.push({ topic, answer, at });
-    this.absorbCustomerText(answer);
     if (topic === 'purpose') this.recomputeContradiction();
+    this.emit();
   }
 
   private recomputeContradiction() {

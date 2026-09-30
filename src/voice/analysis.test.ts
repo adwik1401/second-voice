@@ -48,6 +48,38 @@ describe('analyzeCustomerText — hard triggers', () => {
   });
 });
 
+describe('analyzeCustomerText — negation (live bug: an honest "nobody is pressuring me" raised a secrecy cue)', () => {
+  it.each([
+    'No, nobody is pressuring me and nobody asked me to keep it secret.',
+    "It's not urgent, there's no deadline.",
+    "The police haven't been in touch and I haven't heard from the fraud team.",
+    'Nobody told me what to say.',
+    "There's no safe account involved.",
+    "No one from the bank called me.",
+    "He didn't say it was confidential.",
+  ])('raises nothing for: %s', (text) => {
+    expect(analyzeCustomerText(text)).toEqual({ pressure: [], toldToLie: false, safeAccount: false, contactedByAuthority: false });
+  });
+
+  it.each([
+    ['Keep it secret, he said.', 'secrecy'],
+    ["He told me not to tell anyone.", 'secrecy'],
+    ["They said it's urgent.", 'urgency'],
+    ['The police phoned me.', 'authority'],
+  ])('still raises the cue when it is real: %s', (text, cue) => {
+    expect(analyzeCustomerText(text).pressure).toContain(cue);
+  });
+
+  it('never guards a direct instruction to hide things — "told me not to tell" IS the cue', () => {
+    expect(analyzeCustomerText('He told me not to tell the bank why.').pressure).toContain('secrecy');
+    expect(analyzeCustomerText("Don't tell the bank, he said.").pressure).toContain('secrecy');
+  });
+
+  it('checks every occurrence, not just the first (a negated mention followed by a real one still counts)', () => {
+    expect(analyzeCustomerText('Nobody said keep it quiet. But then he said keep it secret.').pressure).toContain('secrecy');
+  });
+});
+
 describe('purposeContradictsPayee', () => {
   it('flags a business purpose paid into a personal account (the demo scam)', () => {
     expect(purposeContradictsPayee('a deposit on a car from a dealer', 'personal')).toBe(true);

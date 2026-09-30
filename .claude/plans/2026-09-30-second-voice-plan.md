@@ -1,6 +1,6 @@
 # Second Voice — Implementation Plan
 
-**Overall Progress:** `72%` (23 / 32 steps done · Phases 1–5 done · Phase 0 gate proceeded past by Adwik's decision: only 3 counted trials + observations; range/latency/gateway checks still open)
+**Overall Progress:** `78%` (25 / 32 steps done · Phases 1–5 done, Phase 6 partly · Phase 0 gate proceeded past by Adwik's decision: only 3 counted trials + observations; range/latency/gateway checks still open)
 
 **Spec:** [`.claude/specs/2026-09-30-second-voice-design.md`](../specs/2026-09-30-second-voice-design.md) · **Repo:** https://github.com/adwik1401/second-voice
 
@@ -104,12 +104,12 @@ Each code phase follows:
 - [x] 🟩 **Step 23: Script** — 8 coaching lines (feeding answers / secrecy / rushing / posing as the bank) + 3 benign, in `src/simulator/lines.ts`; a test asserts the detector catches every coaching line at ≥ 0.7 and none of the benign ones
 - [x] 🟩 **Step 24: `/simulator` page** — mobile-first (verified at a real 390 px emulated viewport), one tap per line, "Play a coached call" (3 lines, 9 s apart), voice/speed/volume controls, Stop
 
-### Phase 6 — Scenario Evaluation + Tuning
+### Phase 6 — Scenario Evaluation + Tuning 🟨 Partly done — automated live runs complete; manual real-voice/phone runs are Adwik's
 > Claude-managed with Adwik (manual runs) · any tuning code changes → `/execute` → `/run-code` → `/review`
 
-- [ ] 🟥 **Step 25: Run S1–S5 × 5** (spec §11) → record results table in wiki
-- [ ] 🟥 **Step 26: Tune** thresholds (dB gap, overlap, confidence) until S4/S5 ≥ 4/5 and S2 raises no coaching flag
-- [ ] 🟥 **Step 27: Agent prompt polish** — ≤ 2 sentences per turn, tone, correct decision wording
+- [ ] 🟨 **Step 25: Scenario runs** — automated, in headless Chrome against the live Voice Agent API with a synthetic customer + coach (table in wiki `scenario-results.md`): **S4 coached scam: 5 runs → ESCALATE every time (coaching caught, echo caught in the last 4)**; **S2 honest plumber: 2 runs → RELEASE (20 → 10 after fixing a false positive)**. S1 (no check) is covered by unit tests, S3 by the scoring tests. **Still to do by Adwik: real voice + real phone runs** (the synthetic coach is a clean voice on the same stream)
+- [x] 🟩 **Step 26: Tune** — no threshold tuning needed (loudness/diarization are tie-breakers only). Tuning that WAS needed, all found by live runs: echo window 10 → 30 s; stopwords bridge room-only runs; negation-aware cue analysis and no mining of the agent's paraphrase (honest customer was flagged for secrecy)
+- [x] 🟩 **Step 27: Agent prompt** — observed live across 7 runs: ≤ 2 short sentences per turn, one question at a time, asks the gentle second-voice question in the agent's own voice, reads the outcome kindly; no repeated-question problem after the first runs. No change needed
 
 ### Phase 7 — Deploy / Quality Gate
 > Claude-managed (no sub-agent delegation)

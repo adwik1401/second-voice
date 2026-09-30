@@ -60,10 +60,17 @@ describe('customer words', () => {
     expect(s.toRiskSignals().toldToLie).toBe(true);
   });
 
-  it('record_answer stores the answer AND mines it', () => {
+  it('record_answer stores the answer but does NOT mine the agent’s paraphrase (live bug: an honest customer was flagged)', () => {
     const s = scamState();
-    s.recordAnswer('contact_method', 'the police rang me and said use a safe account', 1000);
-    expect(s.answers).toHaveLength(1);
+    s.recordAnswer('pressure', 'No one is pressuring them or asking them to keep it secret.', 1000);
+    s.recordAnswer('contact_method', 'the police rang them and said use a safe account', 1001);
+    expect(s.answers).toHaveLength(2);
+    expect(s.toRiskSignals()).toMatchObject({ pressureCues: 0, safeAccount: false, contactedByAuthority: false });
+  });
+
+  it('what the customer SAYS is still mined', () => {
+    const s = scamState();
+    s.absorbCustomerText('the police rang me and said use a safe account');
     expect(s.toRiskSignals()).toMatchObject({ safeAccount: true, contactedByAuthority: true });
   });
 

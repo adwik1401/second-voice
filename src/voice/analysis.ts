@@ -16,10 +16,13 @@ export interface TextAnalysis {
   contactedByAuthority: boolean;
 }
 
-const lower = (text: string) => text.toLowerCase().replace(/[‘’‛]/g, "'");
+const lower = (text: string) => text.toLowerCase().replace(/[\u2018\u2019\u201B]/g, "'");
 
+// Direct instructions to hide things. These are NEVER negation-guarded: "he told me not to tell anyone" is the cue itself.
+const SECRECY_DIRECT = /\b(?:don'?t tell|do not tell|not to tell|told me not to)\b/;
+// Everything else is guarded against negation: "nobody asked me to keep it secret" is the opposite of a cue.
 const URGENCY = /\b(?:urgent(?:ly)?|hurry|asap|right away|immediately|deadline|running out of time|today only|before (?:it'?s too late|they (?:close|stop)))\b/;
-const SECRECY = /\b(?:secret|don'?t tell|do not tell|not to tell|keep (?:it|this|that) (?:quiet|secret|private)|between us|confidential|told me not to)\b/;
+const SECRECY = /\b(?:secret|keep (?:it|this|that) (?:quiet|secret|private)|between us|confidential)\b/;
 const AUTHORITY = /\b(?:police|fraud (?:team|department)|hmrc|national crime agency|safe account)\b/;
 
 const TOLD_TO_LIE = /\b(?:told me (?:what )?to (?:say|lie|tell)|told me what to say|i was told to say|coached me|said i should say)\b/;
@@ -36,17 +39,45 @@ const CONTACTED_BY_AUTHORITY = new RegExp(
     String.raw`|\b(?:call|text|message|email)\b[^.!?]{0,10}\bfrom\b[^.!?]{0,15}\b${AUTHORITY_NAME}\b`, // a call from the fraud team
 );
 
+const NEGATOR = /\b(?:no|nobody|no one|not|never|nothing|without|isn'?t|aren'?t|wasn'?t|weren'?t|haven'?t|hasn'?t|doesn'?t|didn'?t)\b/;
+/** How far back a negator still negates a cue ("nobody has asked me to keep it secret" is 28 characters). */
+const NEGATION_REACH = 40;
+
+/** Is there a negator shortly before `index`? */
+const negatedAt = (text: string, index: number) => NEGATOR.test(text.slice(Math.max(0, index - NEGATION_REACH), index));
+
+/** "the police HAVEN'T been in touch": a negation right AFTER a noun cue. Kept short and to a few negators. */
+const NEGATOR_AFTER = /\b(?:haven'?t|hasn'?t|hadn'?t|didn'?t|isn'?t|wasn'?t|weren'?t|never)\b/;
+const negatedAfter = (text: string, end: number) => NEGATOR_AFTER.test(text.slice(end, end + 12));
+
+/**
+ * Does `re` match somewhere it is NOT negated? Every match is checked, not just the first.
+ *  'none'  — never guarded (a direct instruction: "told me not to tell" IS the cue)
+ *  'before'— a negator just before the match cancels it ("nobody asked me to keep it secret")
+ *  'both'  — also a negator just after, for noun cues ("the police haven't called")
+ */
+function matches(re: RegExp, text: string, guard: 'none' | 'before' | 'both' = 'before'): boolean {
+  const all = new RegExp(re.source, 'g');
+  for (let m = all.exec(text); m !== null; m = all.exec(text)) {
+    const end = m.index + m[0].length;
+    const negated = guard !== 'none' && (negatedAt(text, m.index) || (guard === 'both' && negatedAfter(text, end)));
+    if (!negated) return true;
+    if (m[0].length === 0) all.lastIndex++;
+  }
+  return false;
+}
+
 export function analyzeCustomerText(text: string): TextAnalysis {
   const t = lower(text);
   const pressure: PressureCue[] = [];
-  if (URGENCY.test(t)) pressure.push('urgency');
-  if (SECRECY.test(t)) pressure.push('secrecy');
-  if (AUTHORITY.test(t)) pressure.push('authority');
+  if (matches(URGENCY, t)) pressure.push('urgency');
+  if (matches(SECRECY_DIRECT, t, 'none') || matches(SECRECY, t)) pressure.push('secrecy');
+  if (matches(AUTHORITY, t, 'both')) pressure.push('authority');
   return {
     pressure,
-    toldToLie: TOLD_TO_LIE.test(t),
-    safeAccount: SAFE_ACCOUNT.test(t),
-    contactedByAuthority: CONTACTED_BY_AUTHORITY.test(t),
+    toldToLie: matches(TOLD_TO_LIE, t),
+    safeAccount: matches(SAFE_ACCOUNT, t, 'both'),
+    contactedByAuthority: matches(CONTACTED_BY_AUTHORITY, t),
   };
 }
 
