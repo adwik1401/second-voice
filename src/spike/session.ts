@@ -80,6 +80,13 @@ export class SpikeSession {
 
   constructor(
     private agentId: string,
+    /**
+     * true  → ONE mic stream (AEC on, NS/AGC off) feeds both connections. Preferred: the probe showed Chrome grants
+     *         this combination, whereas opening a second, differently-constrained stream on the same device made
+     *         Chrome silently switch echo cancellation OFF for it (spike run 3).
+     * false → the original two-stream experiment (Mic A default processing, Mic B raw).
+     */
+    private sharedMic: boolean,
     private ev: SessionEvents,
   ) {}
 
@@ -87,11 +94,17 @@ export class SpikeSession {
     this.ev.status('Fetching tokens…');
     const [agentToken, sttToken] = await Promise.all([fetchToken('agent'), fetchToken('stt')]);
 
-    // Two mic streams from one device, with deliberately different processing. The browser may
-    // ignore the difference — that is one of the things this spike reports.
-    const micA = await openMic({ echoCancellation: true, noiseSuppression: true, autoGainControl: true });
-    const micB = await openMic({ echoCancellation: true, noiseSuppression: false, autoGainControl: false });
-    this.streams.push(micA, micB);
+    let micA: MediaStream;
+    let micB: MediaStream;
+    if (this.sharedMic) {
+      micA = micB = await openMic({ echoCancellation: true, noiseSuppression: false, autoGainControl: false });
+      this.streams.push(micA);
+    } else {
+      // Two streams from one device with deliberately different processing; the browser may ignore the difference.
+      micA = await openMic({ echoCancellation: true, noiseSuppression: true, autoGainControl: true });
+      micB = await openMic({ echoCancellation: true, noiseSuppression: false, autoGainControl: false });
+      this.streams.push(micA, micB);
+    }
     this.ev.constraints(micA.getAudioTracks()[0].getSettings(), micB.getAudioTracks()[0].getSettings());
 
     this.player = new PcmPlayer(); // created inside the click handler → allowed to autoplay

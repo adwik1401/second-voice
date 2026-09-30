@@ -1,6 +1,6 @@
 # Second Voice — Implementation Plan
 
-**Overall Progress:** `9%` (3 / 32 steps done · Phase 0 in progress: Step 3 running live; Step 4 whisper trials + latency comparison remaining)
+**Overall Progress:** `9%` (3 / 32 steps done · Phase 0 in progress: Step 4: shared-mic trials + latency comparison remaining)
 
 **Spec:** [`.claude/specs/2026-09-30-second-voice-design.md`](../specs/2026-09-30-second-voice-design.md) · **Repo:** https://github.com/adwik1401/second-voice
 
@@ -19,8 +19,8 @@ Each code phase follows:
 - **Never delegate:** secrets/env setup, deploys (Claude-managed)
 
 ## Critical Decisions
-- **Audio: dual-stream mic split (Approach A)** — agent stream (echo cancellation + `voice_focus: far-field`), room stream (browser noise suppression/AGC off → Realtime STT `speaker_labels`). Keeps AssemblyAI central; no GPU service.
-- **Background detection = 3 signals voting** (transcript diff, diarization, loudness) **+ echo detection**. Robust if diarization alone is weak.
+- **Audio: ONE shared mic stream (AEC on, NS/AGC off) feeding both connections** — supersedes the dual-stream split: Chrome granted AEC off to a second, differently-constrained stream (spike run 3; probe confirmed AEC-on/NS-off/AGC-off is granted when opened alone). Agent stream keeps `voice_focus: far-field`; room stream = Realtime STT `speaker_labels`. No GPU service.
+- **Detection = content + echo, not source separation (approved reframe 2026-09-30).** Spike runs showed loudness and speaker labels cannot separate a phone at ~1.5 m from the customer or the agent's leaked voice, and the agent stream itself hears a loud phone voice. Core signals: LLM content cues on either stream + echo (customer repeats coach). Room-only speech, diarization and loudness are supporting/tie-breakers. **Whispers out of scope** (quiet clips 0% transcribed). Pitch: "hears the coach on speakerphone".
 - **Deterministic risk scorer decides; the LLM only supplies signals.** Auditable. Never a flat refusal; fail-safe is a hold, not a release.
 - **Signal injection via `conversation.message` + `reply.create`.** Verified in the Voice Agent API events reference.
 - **Stack:** Vite + React + TS SPA, Vitest, ESLint; **Vercel** serverless `api/` functions (resolves spec open item 1: simplest single-repo SPA + functions); mock bank data as JSON; no DB.
@@ -49,21 +49,23 @@ Each code phase follows:
 - [ ] 🟨 **Step 4: Trials (Adwik + phone)**
   - [x] 🟩 Spike now subtracts the agent's own words from the "background" highlight (run 1 showed agent TTS leaking into the room stream)
   - [x] 🟩 Generate test clips (3 coaching, 1 benign × normal/quiet) — `scripts/make-spike-clips.ps1`, served at `/spike-clips/index.html`
-  - [ ] 🟨 10 whisper trials at ~1.5 m → record background identification rate — **run 3: quiet clips 0% detected; normal clips heard by room stream but also by agent stream; customer-speaking-while-clip-plays trials still to do (needs spec reframe decision)**
+  - [x] 🟩 Switch spike to one shared mic stream (AEC on, NS/AGC off); constraint probe added — Chrome grants all 8 combinations when opened alone
+  - [ ] 🟥 10 trials: phone plays a coach clip at normal volume ~1.5 m while the victim answers the agent out loud (+ a few clips while the agent talks) → press ✔/✘ for "coach speech visible to the detector" (room-only words OR in the agent transcript)
+  - [ ] 🟥 Confirm the agent's own voice is now largely absent from the room stream (AEC on)
   - [ ] 🟥 Confirm the agent's own TTS is not flagged as background; benign clip not flagged as coaching
   - [ ] 🟥 Measure agent reply latency: managed model vs LLM Gateway (Claude) → pick one
 - [ ] 🟥 **Step 5: Go/no-go** (record in wiki `decisions.md`)
-  - [ ] 🟥 ≥ 70% → proceed as specced
-  - [ ] 🟥 < 70% → fall back to transcript-diff + echo only; reframe the feature as "detects coached answers"
+  - [ ] 🟥 ≥ 7 of 10 trials visible → proceed as reframed (content + echo core)
+  - [ ] 🟥 < 7 of 10 → pivot to content + echo on the agent-stream transcript only; pitch "detects coached answers"
   - [ ] 🟥 If Chrome rejects dual constraints → single raw stream + Web Audio noise gate on the agent path
 
 ### Phase 1 — Core Logic (pure functions + tests)
 > `[DELEGATING → Codex /execute]` → `[DELEGATING → Codex /run-code]` → `[DELEGATING → Codex /review]`
 
-- [ ] 🟥 **Step 6: Loudness Tagger** — `tagWords(words, rmsFrames, sessionStartMs)`; primary = loudest median; `far` if ≥ 6 dB below (constant from spike)
+- [ ] 🟥 **Step 6: Loudness Tagger (tie-breaker only)** — `tagWords(words, rmsFrames, sessionStartMs)`; medians; `far` if ≥ 6 dB below the customer median
 - [ ] 🟥 **Step 7: Signal Engine**
   - [ ] 🟥 Fuzzy transcript matcher (±1.5 s window)
-  - [ ] 🟥 `findBackground()` — 2-of-3 vote, or diff alone with ≥ 4 unmatched words
+  - [ ] 🟥 `findRoomOnlySpeech()` — fuzzy + digit-aware matching, customer-speech window attribution (`input.speech.started/stopped`), agent-echo subtraction; evidence rule per spec §7.5
   - [ ] 🟥 `detectEcho()` — token overlap ≥ 0.5 within 10 s
 - [ ] 🟥 **Step 8: Risk Scorer** — points table, bands (<30 / 30–69 / ≥70), hard triggers, tool-failure +10
 - [ ] 🟥 **Step 9: Precheck rule** — ≥ £1,000 and (new payee or CoP ≠ MATCH), or ≥ 3× the 90-day max
@@ -73,7 +75,7 @@ Each code phase follows:
 > `[DELEGATING → Codex /execute]` → `[DELEGATING → Codex /run-code]` → `[DELEGATING → Codex /review]`
 
 - [ ] 🟥 **Step 10: Mock bank data + endpoints** — customers, payees (legit / scam personas), `GET /api/bank/profile|payee-check|payee-risk`
-- [ ] 🟥 **Step 11: `POST /api/detect`** — LLM Gateway, JSON schema per spec §7.6, temperature 0, 3 s timeout → `unclear`
+- [ ] 🟥 **Step 11: `POST /api/detect`** — the core content-cue classifier: takes utterances from **either stream** (spec §7.6), LLM Gateway, JSON schema, temperature 0, 3 s timeout → `unclear`
 - [ ] 🟥 **Step 12: Agent setup script** — creates/updates the stored agent (system prompt §7.10, greeting, voice `anna`, `voice_focus`, transcription prompt, keyterms, chosen LLM)
 - [ ] 🟥 Endpoint tests for all `api/*` (mock AAI + Gateway, incl. timeout path)
 
@@ -89,7 +91,7 @@ Each code phase follows:
 ### Phase 4 — Room Listener + Signal Pipeline + Fraud Officer Panel
 > `[DELEGATING → Codex /execute]` → `[DELEGATING → Codex /run-code]` → `[DELEGATING → Codex /review]`
 
-- [ ] 🟥 **Step 18: Room Listener** — Mic B stream → Realtime STT; RMS frame capture; degraded mode if unavailable
+- [ ] 🟥 **Step 18: Room Listener** — shared mic stream → Realtime STT; RMS frame capture; degraded mode if unavailable
 - [ ] 🟥 **Step 19: Pipeline wiring** — room turns + agent transcripts → Signal Engine → `/api/detect` (debounced, 1 in-flight) → Risk Scorer → Injector
 - [ ] 🟥 **Step 20: Fraud Officer Panel** — dual transcripts, highlighted background utterances, speaker/loudness strip, signal chips, risk gauge + reasons, decision
 - [ ] 🟥 **Step 21: Audit Record export** — JSON + printable HTML (spec §7.11); no audio stored
@@ -99,7 +101,7 @@ Each code phase follows:
 > `[DELEGATING → Codex /execute]` → `[DELEGATING → Codex /run-code]` → `[DELEGATING → Codex /review]` · clip generation: Claude-managed
 
 - [ ] 🟥 **Step 22: Choose TTS provider** — licence check for demo/public use (spec open item 2); log in wiki
-- [ ] 🟥 **Step 23: Generate clips** — ~10 coaching lines × (whisper, normal) + 3 benign; static MP3s in `public/`
+- [ ] 🟥 **Step 23: Generate clips** — ~10 coaching lines at conversational (speakerphone) volume + 3 benign; static MP3s in `public/`
 - [ ] 🟥 **Step 24: `/simulator` page** — mobile-first button grid, one tap = play
 
 ### Phase 6 — Scenario Evaluation + Tuning

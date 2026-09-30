@@ -32,6 +32,8 @@ export default function Spike() {
   const [agents, setAgents] = useState(loadAgents);
   const [kind, setKind] = useState<AgentKind>('managed');
   const [running, setRunning] = useState(false);
+  const [shared, setShared] = useState(true);
+  const [ranShared, setRanShared] = useState(true);
   const [status, setStatus] = useState('Idle.');
   const [error, setError] = useState('');
   const [constraints, setConstraints] = useState<{ a: MediaTrackSettings; b: MediaTrackSettings } | null>(null);
@@ -85,7 +87,8 @@ export default function Spike() {
     setRoomTurns([]);
     setAgentLines([]);
     setRoomPartial('');
-    const s = new SpikeSession(agents[kind], {
+    setRanShared(shared);
+    const s = new SpikeSession(agents[kind], shared, {
       status: setStatus,
       constraints: (a, b) => setConstraints({ a, b }),
       roomPartial: setRoomPartial,
@@ -129,12 +132,18 @@ export default function Spike() {
 
   const loudness = useMemo(() => speakerLoudness(roomTurns.flatMap((t) => t.words)), [roomTurns]);
 
-  const honoured = constraints ? constraints.b.noiseSuppression === false && constraints.a.noiseSuppression !== false : null;
+  // Shared mode: did Chrome grant AEC on + NS off + AGC off? Two-stream mode: did the two streams differ as asked?
+  const honoured = constraints
+    ? ranShared
+      ? constraints.b.echoCancellation === true && constraints.b.noiseSuppression === false && constraints.b.autoGainControl === false
+      : constraints.b.noiseSuppression === false && constraints.a.noiseSuppression !== false
+    : null;
 
   const results = () =>
     JSON.stringify(
       {
-        chromeHonouredDifferentConstraints: honoured,
+        sharedMic: ranShared,
+        constraintsAsRequested: honoured,
         micA: constraints?.a,
         micB: constraints?.b,
         constraintProbe: probe,
@@ -153,8 +162,9 @@ export default function Spike() {
     <main className="spike">
       <h1>Phase 0 spike — dual-stream second-voice test</h1>
       <p className="muted">
-        Headphones OFF (laptop speakers), phone playing a coaching clip ~1.5 m away. Go = whisper identified in ≥ 7 of 10
-        trials.
+        Headphones OFF (laptop speakers). Phone ~1.5 m away plays a coach clip at normal volume WHILE you answer the agent out
+        loud (also try a few clips while the agent is talking). Go = coach speech visible to the detector in ≥ 7 of 10 trials.
+        Whispers are out of scope (run 3: 0% detected).
       </p>
 
       <section className="row">
@@ -176,14 +186,18 @@ export default function Spike() {
             Start
           </button>
         )}
+        <label>
+          <input type="checkbox" checked={shared} disabled={running} onChange={(e) => setShared(e.target.checked)} /> one shared
+          mic (AEC on, NS/AGC off)
+        </label>
         <span>{status}</span>
       </section>
       {error && <p className="error">{error}</p>}
 
       <section>
         <h2>
-          1 · Did Chrome honour different constraints?{' '}
-          {honoured === null ? '' : honoured ? '✅ yes' : '❌ no — use single-stream fallback'}
+          1 · {ranShared ? 'Did Chrome grant AEC on + NS off + AGC off?' : 'Did Chrome honour different constraints?'}{' '}
+          {honoured === null ? '' : honoured ? '✅ yes' : '❌ no'}
         </h2>
         {constraints && (
           <table>
@@ -275,10 +289,12 @@ export default function Spike() {
       </section>
 
       <section>
-        <h2>5 · Trials — press after each whisper clip</h2>
+        <h2>5 · Trials — press after each coach clip</h2>
         <div className="row">
-          <button onClick={() => setTrials((t) => ({ ...t, hit: t.hit + 1 }))}>✔ whisper identified as background</button>
-          <button onClick={() => setTrials((t) => ({ ...t, miss: t.miss + 1 }))}>✘ missed</button>
+          <button onClick={() => setTrials((t) => ({ ...t, hit: t.hit + 1 }))}>
+            ✔ coach speech visible (orange in room stream, or in the agent transcript)
+          </button>
+          <button onClick={() => setTrials((t) => ({ ...t, miss: t.miss + 1 }))}>✘ not visible anywhere</button>
           <button onClick={() => setTrials((t) => ({ ...t, ttsLeak: t.ttsLeak + 1 }))}>
             agent voice leaked into room stream
           </button>

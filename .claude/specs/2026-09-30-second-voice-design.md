@@ -11,7 +11,9 @@
 
 **Second Voice** is a scam-interrupt voice agent for UK banks. When a customer initiates a high-risk bank transfer, the bank app opens a short in-app **Voice Check**. A conversational agent talks to the customer, calls bank tools (Confirmation of Payee, payee risk, customer profile), and decides to **release**, **hold with a cooling-off period**, or **escalate to a human fraud officer** — writing an auditable intervention record.
 
-Its signature capability: a **parallel room-listening stream** detects a *second voice* coaching the customer (e.g. a scammer on speakerphone whispering "say it's for a car"), and the agent reacts to it in real time.
+Its signature capability: it **hears the coach**. Coaching *content* — a scammer on speakerphone or in the room feeding the customer answers ("tell her it's for a car deposit, don't mention me") — is detected from the live conversation and a parallel room-listening stream, and the agent reacts in real time.
+
+**Scope (changed 2026-09-30 after spike runs 1–3):** coaching at conversational volume. True whispers ~1.5 m from a laptop mic are below what mic + STT capture (quiet clips, ~19 dB down: 0% transcribed) and are explicitly out of scope. Source separation by loudness or speaker label proved unreliable, so detection is built on **content and echo**, with the two-stream comparison as supporting evidence.
 
 **One-line pitch:** *"Scammers coach their victims through the bank's questions. Second Voice hears the coach."*
 
@@ -50,7 +52,7 @@ Its signature capability: a **parallel room-listening stream** detects a *second
 
 1. **Hook (0:00–0:20):** stat + "scammers coach victims through bank checks".
 2. **Legit payment (0:20–0:50):** Adwik sends £400 to a known payee → no Voice Check, or a 15-second check → **Released**. Shows it's not friction-for-everyone.
-3. **Coached scam (0:50–2:10):** Adwik sends £8,000 to a new payee "for a car". Voice Check opens. Phone (Scammer Simulator) whispers coaching lines. Panel lights up: background speaker detected → coaching quote → customer echoes the coached phrase. Agent gently: *"I might be wrong, but it sounds like someone else is with you — is anyone telling you what to say?"* CoP shows payee is a personal account, not a dealership; account 6 days old. Agent → **Escalate** with cooling-off; human handoff offered.
+3. **Coached scam (0:50–2:10):** Adwik sends £8,000 to a new payee "for a car". Voice Check opens. Phone (Scammer Simulator, on speakerphone at conversational volume) feeds coaching lines. Panel lights up: coaching language detected → quote → customer echoes the coached phrase. Agent gently: *"I might be wrong, but it sounds like someone else is with you — is anyone telling you what to say?"* CoP shows payee is a personal account, not a dealership; account 6 days old. Agent → **Escalate** with cooling-off; human handoff offered.
 4. **Audit record (2:10–2:30):** downloadable intervention record with evidence.
 5. **Tech + business close (2:30–3:00):** architecture slide, AAI products used, reimbursement economics.
 
@@ -63,17 +65,17 @@ Victim laptop (Chrome)                                   Serverless functions
 ┌──────────────────────────────────────────────────┐    ┌────────────────────────────┐
 │ Bank App Shell ── risky transfer ──► Voice Check │    │ GET  /api/token/agent      │
 │                                                  │◄──►│ GET  /api/token/stt        │
-│ Mic A (echoCancellation ON, NS/AGC default)      │    │ POST /api/detect  ─► LLM   │
-│   └─► Agent stream ──WS──► AAI Voice Agent API   │    │                     Gateway│
+│ ONE shared mic: AEC ON, NS OFF, AGC OFF          │    │ POST /api/detect  ─► LLM   │
+│   ├─► Agent stream ──WS──► AAI Voice Agent API   │    │                     Gateway│
 │          voice: anna · voice_focus: far-field    │    │ GET  /api/bank/*  (mock)   │
 │          tools ◄──► Mock Bank Services           │    └────────────────────────────┘
-│ Mic B (echoCancellation ON, NS OFF, AGC OFF)     │
+│         (same stream feeds both)                 │
 │   └─► Room stream ──WS──► AAI Realtime STT       │
 │          speaker_labels: true, max_speakers: 3   │
-│   └─► Loudness Tagger (Web Audio RMS frames)     │
+│   └─► Loudness frames (tie-breaker only)         │
 │                    ▼                              │
-│ Signal Engine: transcript diff + loudness +       │
-│   speaker labels → background utterances          │
+│ Signal Engine: content cues + echo + window-      │
+│   attributed transcript diff → evidence           │
 │                    ▼                              │
 │ Coaching Detector (calls /api/detect)             │
 │                    ▼                              │
@@ -100,38 +102,37 @@ Phone: Scammer Simulator page (pre-generated AI-voice clips)
 - **Depends on:** `/api/token/agent`, Mock Bank Services (tools).
 
 ### 7.3 Room Listener (room stream)
-- **Purpose:** hear the whole room, including faint background voices.
+- **Purpose:** hear the whole room at conversational volume — a coach on speakerphone or beside the customer. (Whispers ~1.5 m from a laptop mic are not captured — spike run 3.)
 - **Interface:** `start(mediaStream)`, events `onTurn { text, speakerLabel, speakerConfidence, words[{text,start,end,speaker}] }`.
 - **Config:** Realtime STT `universal-3-6-pro` (or latest), `speaker_labels: true`, `max_speakers: 3`, `prompt` = same scenario context. Token from `/api/token/stt`.
-- **Mic B constraints:** `{ echoCancellation: true, noiseSuppression: false, autoGainControl: false }` (keep AEC so the agent's own TTS isn't transcribed; disable NS/AGC so whispers survive).
+- **Mic constraints:** ONE shared stream `{ echoCancellation: true, noiseSuppression: false, autoGainControl: false }` feeds both the agent and room connections. Spike probe: Chrome grants this combination when opened alone, but opening a *second* stream with different constraints on the same device made Chrome grant that stream AEC **off** (run 3) — so never open two differently-constrained streams. With AEC on for the room stream the agent's own TTS should be largely removed at the source (confirm in spike run 4); agent-echo subtraction (§7.5) stays as the backstop.
 - **Depends on:** `/api/token/stt`.
 
 ### 7.4 Loudness Tagger
-- **Purpose:** label each room-stream word as near (customer) or far (background) using level.
+- **Purpose (tie-breaker only — never decides alone):** label each room-stream word as near (customer) or far using level. Spike runs: a phone at ~1.5 m vs the agent's leaked voice read −31 / −33 / −32 dBFS (all within 2 dB).
 - **Interface:** pure fn `tagWords(words, rmsFrames, sessionStartMs) → words[] with { dbfs, proximity: 'near'|'far'|'unknown' }`.
-- **Algorithm:** 50 ms RMS frames from an `AnalyserNode` on Mic B, timestamped against the STT session start. Per word: mean dBFS over its [start,end]. Per speaker label: running median dBFS. The speaker label with the loudest median = primary (customer); a label whose median is ≥ 6 dB below primary = `far`. Threshold is a tunable constant validated in the spike.
+- **Algorithm:** 50 ms RMS frames from the shared mic stream, timestamped against the STT session start. Per word: mean dBFS over its [start,end]. Per speaker label: running median dBFS. The speaker label with the loudest median = primary (customer); a label whose median is ≥ 6 dB below primary = `far`. Threshold is a tunable constant validated in the spike.
 - **Depends on:** nothing (pure).
 
 ### 7.5 Signal Engine
-- **Purpose:** decide which room-stream speech is **background speech** — robust even if diarization is imperfect.
-- **Three independent signals, combined:**
-  1. **Transcript difference:** the agent stream (with `voice_focus`) should transcribe only the customer. Room-stream words in a time window that have **no fuzzy match** in the agent-stream transcript of the same window (±1.5 s) are candidate background words.
-  2. **Diarization:** words whose `speaker` ≠ primary speaker label.
-  3. **Loudness:** words tagged `far`.
-- **Agent-echo subtraction (added after first live spike run, 2026-09-30):** the agent's own voice plays through the laptop speakers and leaks into the room stream — the results JSON of run 3 showed Chrome **granted Mic B `echoCancellation: false` although `true` was requested** (so the leak is expected, not an AEC weakness; a constraint probe is checking whether AEC + NS-off + AGC-off is obtainable at all). The room STT often mis-hears the leak, e.g. the room STT often mis-hears it (e.g. "Larkmoor's" → "Lark, the Morning King's"). Room words that match the agent's own `transcript.agent` text within ~15 s are classed as `agent_echo`, not background, before any voting. Fuzzy matching is required; pure timing suppression is rejected because a coach often whispers *while* the agent is speaking.
-- **Matching must be fuzzy and digit-aware (spike run 2):** the two streams disagreed on near-spellings ("Larkmoor's" vs "Larkmore's") and on spoken digit strings ("100202022" vs "10020202222"); a quiet customer "Continue." was heard by the room stream as "Some fruits, fruits." at −35 dBFS. Exact word matching would score all three as background.
-- **Customer-speech window attribution (spike run 2):** room words that fall inside a window where the agent stream's `input.speech.started` → `input.speech.stopped` marked the *customer* speaking are attributed to the customer even if the transcripts disagree. A genuine second voice is expected mainly in the gaps and while the agent speaks; simultaneous overlap is caught by word count.
-- **Use medians for loudness:** the first word of a session reads as a transient (−19 dBFS vs a −30 baseline).
-- **Loudness does not separate a normal-volume phone at ~1.5 m from the agent's leaked voice:** run 3 speaker medians were −33 / −31 / −32 dBFS (all within 2 dB). Treat loudness, like diarization, as a tie-breaker; content classification, echo detection and window-attributed transcript difference carry the decision.
-- **Diarization is a weak signal in short sessions:** in the first run one customer was labelled A, B and C and the agent's leaked voice A, B and C. Speaker labels are a tie-breaker only; loudness and the transcript difference carry the decision.
-- **Rule:** a room-stream utterance is `background` if ≥ 2 of 3 signals agree, or signal 1 alone with ≥ 4 unmatched words.
-- **Echo detection:** after a background utterance, if the customer's next agent-stream utterance within 10 s has high overlap with it (normalised token overlap ≥ 0.5, or LLM-judged paraphrase via `/api/detect`), emit `ECHO` — *the customer repeated what the coach said*. Strongest single signal.
-- **Interface:** pure fns `findBackground(roomTurns, agentUserTurns, taggedWords) → BackgroundUtterance[]`, `detectEcho(bg, nextUserTurn) → EchoResult`.
+- **Purpose:** find **coaching evidence** in what is said around the customer — robust to weak diarization, loudness and STT mishearing.
+- **Design basis (spike runs 1–3):** coaching *content* is visible in whichever stream hears it. In run 3 the coach's "Tell her it's for a car deposit. Don't mention me." appeared in the **agent stream's customer transcript** and the agent answered it as if the customer had said it (`voice_focus` passes a loud phone voice when the customer is silent). So the core is content and echo; comparing streams is supporting evidence.
+- **Evidence signals, strongest first:**
+  1. **Content cues (core):** `/api/detect` classifies utterances from **either stream** for coaching language — second-person imperatives, scripted answers, "don't tell the bank", a third party instructing the customer.
+  2. **Echo:** the customer's next agent-stream utterance within 10 s overlaps a coach utterance heard on the room stream (normalised token overlap ≥ 0.5, or LLM-judged paraphrase) → `ECHO`: *the customer repeated what the coach said.* Strongest single signal.
+  3. **Room-only speech (supporting):** room-stream words with no fuzzy match in the customer or agent transcripts, outside customer-speech windows (below). Indicates a voice the agent stream excluded — expected when coach and customer overlap.
+  4. **Tie-breakers only:** diarization label ≠ the customer's; loudness ≥ 6 dB below the customer median. Neither may decide alone (run 1: one customer labelled A, B and C; run 3: speaker medians −33/−31/−32 dBFS).
+- **Agent-echo subtraction (backstop):** room words matching the agent's own `transcript.agent` text within ~15 s are `agent_echo`, never evidence. The room STT mis-hears the leak (e.g. "Larkmoor's" → "Lark, the Morning King's"), so matching must be fuzzy. Timing-only suppression is rejected: a coach may speak while the agent is speaking.
+- **Matching must be fuzzy and digit-aware:** observed disagreements between streams — "Larkmoor's"/"Larkmore's", "100202022"/"10020202222", and a quiet "Continue." heard as "Some fruits, fruits." at −35 dBFS. Exact matching would score all of these as a second voice.
+- **Customer-speech window attribution:** room words inside a window where the agent stream's `input.speech.started` → `input.speech.stopped` marked the customer speaking are attributed to the customer even if the transcripts disagree. Use speech events, not transcript arrival times (a merged agent-stream transcript can land > 8 s after the room turn).
+- **Loudness uses medians** (the first word of a session reads as a transient: −19 dBFS vs a −30 baseline).
+- **Rule:** coaching evidence = content cue (confidence ≥ 0.7) **or** `ECHO` **or** (room-only speech of ≥ 4 unmatched words **and** ≥ 1 tie-breaker). Evidence feeds the Risk Scorer (§7.7).
+- **Interface:** pure fns `findRoomOnlySpeech(roomTurns, customerTurns, agentTurns, speechWindows, taggedWords) → RoomUtterance[]`, `detectEcho(utterance, nextCustomerTurn) → EchoResult`.
 
 ### 7.6 Coaching Detector
-- **Purpose:** classify background speech + conversation context.
+- **Purpose:** classify utterances (from either stream) + conversation context for coaching.
 - **Endpoint:** `POST /api/detect`
-  - **Request:** `{ backgroundText: string, recentConversation: {role:'agent'|'customer', text}[], transfer: {amountGBP, payeeName, purpose} }`
+  - **Request:** `{ utterances: { source: 'agent_stream'|'room_stream', text: string }[], recentConversation: {role:'agent'|'customer', text}[], transfer: {amountGBP, payeeName, purpose} }`
   - **Response:** `{ isCoaching: boolean, type: 'script_feeding'|'secrecy_instruction'|'urgency_pressure'|'impersonation'|'benign_chatter'|'unclear', quote: string, confidence: 0..1, echoOf?: string }`
 - **LLM:** LLM Gateway, JSON output, temperature 0; 3 s timeout → treat as `unclear`.
 - **Debounce:** one call per background utterance, max 1 in-flight.
@@ -182,15 +183,15 @@ Phone: Scammer Simulator page (pre-generated AI-voice clips)
 - **Audit Record export:** JSON + printable HTML: timestamps, transfer details, tool results, signals with evidence quotes, score breakdown, decision, disclosure given. No audio stored.
 
 ### 7.12 Scammer Simulator
-- Standalone page (phone). Buttons for ~10 coaching lines in whisper + normal variants; plus 3 "benign chatter" lines for false-positive testing.
+- Standalone page (phone). Buttons for ~10 coaching lines at conversational (speakerphone) volume; plus 3 "benign chatter" lines for false-positive testing.
 - Clips **pre-generated** with an AI TTS tool and shipped as static MP3s (no runtime dependency). Provider picked at plan time (candidates: ElevenLabs, OpenAI TTS) — must allow commercial/demo use.
 
 ## 8. Data flow (coached-scam path)
 
 1. Transfer submitted → `precheck` → Voice Check required.
-2. Client fetches both tokens; opens Mic A and Mic B; opens both WebSockets; agent greets.
+2. Client fetches both tokens; opens ONE shared mic stream; opens both WebSockets; agent greets.
 3. Customer answers → agent calls tools → Risk Scorer updates.
-4. Simulator whispers → room stream transcribes → Signal Engine marks background → `/api/detect` → coaching 0.86 `script_feeding`.
+4. Simulator plays coaching at speakerphone volume → room and/or agent stream transcribes it → Signal Engine + `/api/detect` content cue → coaching 0.86 `script_feeding`.
 5. Agent Injector → agent asks gently about a second person. Customer echoes coached phrase → ECHO.
 6. Agent calls `decide_payment` → scorer returns `ESCALATE` → agent explains, offers human → Audit Record generated.
 
@@ -200,7 +201,7 @@ Phone: Scammer Simulator page (pre-generated AI-voice clips)
 |---|---|
 | Agent WS drops | One auto-reconnect; if it fails → `COOLING_OFF` + "a colleague will call you" |
 | Room STT fails / unavailable | Continue agent-only; panel shows "room analysis unavailable"; no background signals scored |
-| Mic B can't get separate constraints (Chrome limitation) | Single stream fallback: raw mic to room STT; Mic A path uses Web Audio noise gate before agent — decided in spike |
+| Mic stream doesn't get AEC on / NS off / AGC off as requested | Use whatever Chrome grants; agent-echo subtraction (§7.5) carries the load |
 | `/api/detect` timeout/error | Treat as `unclear`, no points; log |
 | Mic permission denied | Show message; route to human review (no release) |
 | Token expired before connect | Refetch once |
@@ -223,20 +224,21 @@ Phone: Scammer Simulator page (pre-generated AI-voice clips)
 | S1 Legit known payee, quiet room | RELEASE, no background flags |
 | S2 Legit new payee (CoP MATCH, established account), friend chatting benignly in background | RELEASE (expected score ≈ 20: new payee +10, background speech +10), **no coaching flag** (false-positive test) |
 | S3 Uncoached scam (bad CoP, new account, contradictory purpose) | COOLING_OFF/ESCALATE via bank signals only |
-| S4 Coached scam, whisper at 1.5 m | ESCALATE; coaching detected ≥ 4/5 runs |
-| S5 Coached scam, normal voice speakerphone | ESCALATE; ECHO detected ≥ 4/5 runs |
+| S4 Coached scam: coach clip at speakerphone volume while the customer is answering | ESCALATE; coaching detected ≥ 4/5 runs |
+| S5 Coached scam: coach speaks while the agent is talking; customer then repeats the phrase | ESCALATE; ECHO detected ≥ 4/5 runs |
 
 **Quality gates:** `npm run lint`, `npm run typecheck`, tests pass before any phase is complete.
 
 ## 12. Phase 0 — de-risking spike (must pass before building the rest)
 
 A throwaway page proving the core bet:
-- Two mic tracks with different constraints (or fallback confirmed).
-- Room STT with `speaker_labels` + transcript diff vs agent stream (or plain STT stand-in) + loudness tags.
-- Simulator clip whispered at ~1.5 m from a laptop.
-- **Pass:** background utterance correctly identified in ≥ 70% of 10 trials; agent's own TTS not flagged as background; benign-chatter clip not classified as coaching.
-- Also measure: agent reply latency managed vs LLM Gateway; confirm Realtime STT browser token endpoint.
-- **If fail:** fall back to transcript-diff + echo signals only (still demoable), and reframe the feature as "detects coached answers" rather than "hears the second voice".
+- ONE shared mic stream (AEC on, NS/AGC off) feeding both the Voice Agent connection and the room STT connection.
+- Phone plays coach clips at normal volume ~1.5 m away **while the victim answers the agent out loud**, and a few clips while the agent is talking.
+- **Pass (revised 2026-09-30):** in ≥ 7 of 10 trials the coach's speech is visible to the detector by at least one path — room-only words, or present in the agent transcript — judged by the human on the spike page. The agent's own TTS should be largely absent from the room stream now AEC is on (≤ 1 leak in 10 agent turns) or fully subtractable.
+- Content judgement (does a coaching line read as coaching, a benign line as benign) is built and scored in Phase 2's `/api/detect`; the spike only proves the words reach us.
+- Also measure: agent reply latency managed vs LLM Gateway (more than one sample).
+- **Whispers are out of scope** (run 3: quiet clips 0% transcribed at ~1.5 m).
+- **If fail** (coach speech not reliably captured on either stream): pivot to content + echo analysis of the agent-stream transcript only, and pitch "detects coached answers".
 
 ## 13. Submission deliverables
 
