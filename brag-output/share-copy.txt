@@ -1,0 +1,1 @@
+Scammers coach their victims through the bank's questions. Second Voice hears the coach: a voice agent built on AssemblyAI's Voice Agent API + Realtime STT that asks one gentle question and escalates before the money moves. github.com/adwik1401/second-voice

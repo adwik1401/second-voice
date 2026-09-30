@@ -22,3 +22,12 @@ Thumbs.db
 .idea/
 *.log
 
+
+# Video work (renders and snapshots are regenerable; final videos live in docs/video)
+videos/*/renders/
+videos/*/snapshots/
+videos/*/.hyperframes/
+brag-output/brag.mp4
+brag-output/composition/snapshots/
+brag-output/composition/.hyperframes/
+brag-output/composition/assets/music/

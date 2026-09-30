@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Second Voice teaser</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root { --bg: #071a20; --gold: #d4a84b; --red: #ff6b5e; --cream: #f3ede0; --mute: #9fb4ba; }
+      html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+      #root { position: relative; width: 100%; height: 100%; background: var(--bg); font-family: "Montserrat", "Helvetica Neue", sans-serif; color: var(--cream); overflow: hidden; }
+      .scene { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+      .glow { position: absolute; width: 1040px; height: 1040px; border-radius: 50%; background: radial-gradient(circle, rgba(15,76,92,0.85) 0%, rgba(7,26,32,0) 65%); }
+      .label { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 26px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); }
+
+      #hook-wrap { position: relative; display: flex; flex-direction: column; align-items: center; gap: 40px; max-width: 1500px; }
+      #bubble { padding: 60px 76px; border-radius: 52px 52px 52px 10px; background: rgba(255,107,94,0.12); border: 3px solid var(--red); font-size: 92px; font-weight: 700; line-height: 1.2; letter-spacing: -0.015em; }
+
+      #title { position: relative; font-weight: 900; font-size: 220px; letter-spacing: -0.045em; line-height: 1; }
+      #title b, #o-title b { color: var(--gold); font-weight: 900; }
+      .rule { position: relative; width: 160px; height: 8px; background: var(--gold); margin: 30px 0; border-radius: 4px; }
+      #tagline { position: relative; font-size: 60px; font-weight: 700; }
+
+      #footbg { position: absolute; inset: 0; background: linear-gradient(90deg, #04161b 0%, #0a2b34 50%, #04161b 100%); }
+      .footage { position: absolute; left: 96px; top: 0; width: 1728px; height: 1080px; }
+      .cap { position: absolute; left: 132px; bottom: 96px; width: 1100px; }
+      .cap .card { padding: 26px 36px 28px 40px; background: rgba(4,22,27,0.92); border-left: 10px solid var(--gold); border-radius: 6px 18px 18px 6px; box-shadow: 0 10px 40px rgba(0,0,0,0.45); }
+      .cap.red .card { border-left-color: var(--red); }
+      .cap .label { font-size: 21px; margin-bottom: 10px; }
+      .cap.red .label { color: var(--red); }
+      .cap .txt { font-size: 42px; font-weight: 700; line-height: 1.25; }
+      #disclose { position: absolute; left: 132px; bottom: 32px; font-family: "JetBrains Mono", monospace; font-size: 20px; color: #c9d6da; background: rgba(4,22,27,0.82); padding: 8px 16px; border-radius: 8px; }
+
+      #s4bg { position: absolute; inset: 0; background: var(--bg); }
+      #o-title { position: relative; font-weight: 900; font-size: 170px; letter-spacing: -0.04em; line-height: 1; }
+      #o-tag { position: relative; margin-top: 28px; font-size: 58px; font-weight: 700; max-width: 1500px; line-height: 1.25; }
+      #o-credit { position: relative; margin-top: 54px; font-size: 30px; font-weight: 700; color: var(--mute); }
+      #o-repo { position: relative; margin-top: 22px; font-family: "JetBrains Mono", monospace; font-size: 34px; color: var(--gold); font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="23.4" data-width="1920" data-height="1080">
+
+      <!-- Hook 0 – 5.0 -->
+      <div id="s1" class="scene clip" data-start="0" data-duration="5.0" data-track-index="1">
+        <div class="glow"></div>
+        <div id="hook-wrap">
+          <div class="label">The scammer, on the phone</div>
+          <div id="bubble">“Tell her it’s for a car deposit. Don’t mention me.”</div>
+        </div>
+      </div>
+
+      <!-- Title 5.0 – 7.4 -->
+      <div id="s2" class="scene clip" data-start="5.0" data-duration="2.4" data-track-index="1">
+        <div class="glow"></div>
+        <div id="title">Second <b>Voice</b></div>
+        <div class="rule"></div>
+        <div id="tagline">It hears the coach.</div>
+      </div>
+
+      <!-- Real run 7.4 – 17.2 (source 50.0 – 59.8) -->
+      <div id="footbg" class="clip" data-start="7.4" data-duration="9.8" data-track-index="1"></div>
+      <video id="fv" class="clip footage" src="assets/footage.mp4" data-start="7.4" data-duration="9.8" data-media-start="50.0" data-track-index="2" muted playsinline></video>
+      <audio id="fa" src="assets/footage-audio.m4a" data-start="7.4" data-duration="9.8" data-media-start="50.0" data-track-index="10" data-volume="1"></audio>
+      <div id="disclose" class="clip" data-start="7.4" data-duration="9.8" data-track-index="5">Real run, live AssemblyAI APIs. Customer and scammer voices are synthetic.</div>
+      <div id="c1" class="cap red clip" data-start="7.7" data-duration="3.6" data-track-index="4"><div class="card"><div class="label">A second voice in the room</div><div class="txt">The coach is heard, and scored.</div></div></div>
+      <div id="c2" class="cap clip" data-start="11.9" data-duration="5.0" data-track-index="4"><div class="card"><div class="label">The agent asks, once, gently</div><div class="txt">“Is there someone there with you at the moment?”</div></div></div>
+
+      <!-- Close 17.2 – 23.4 -->
+      <div id="s4" class="scene clip" data-start="17.2" data-duration="6.2" data-track-index="1">
+        <div id="s4bg"></div>
+        <div class="glow"></div>
+        <div id="o-title">Second <b>Voice</b></div>
+        <div id="o-tag">Scammers coach their victims.<br />Second Voice hears the coach.</div>
+        <div id="o-credit">Built on AssemblyAI Voice Agent API + Realtime Speech-to-Text</div>
+        <div id="o-repo">github.com/adwik1401/second-voice</div>
+      </div>
+
+      <!-- Audio: narration, bed, sfx -->
+      <audio id="vo-a" src="assets/vo-a.wav" data-start="0.7" data-duration="3.48" data-track-index="11"></audio>
+      <audio id="vo-b" src="assets/vo-b.wav" data-start="17.7" data-duration="4.18" data-track-index="11"></audio>
+      <audio id="bed" src="assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3" data-start="0" data-duration="23.4" data-track-index="12" data-volume="1"
+        data-automation='{"version":1,"lanes":[{"target":"volume","points":[{"t":0,"v":0},{"t":1,"v":0.14},{"t":7.4,"v":0.14},{"t":7.8,"v":0.05},{"t":17.0,"v":0.05},{"t":17.6,"v":0.13},{"t":21.5,"v":0.13},{"t":23.4,"v":0}]}]}'></audio>
+      <audio id="sfx-title" src="assets/sfx/bong_001.ogg" data-start="5.05" data-duration="0.12" data-track-index="13" data-volume="0.8"></audio>
+      <audio id="sfx-close" src="assets/sfx/drop_001.ogg" data-start="17.25" data-duration="0.11" data-track-index="13" data-volume="0.8"></audio>
+    </div>
+
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const inUp = (sel, at, d = 0.55) => tl.fromTo(sel, { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: d, ease: "power3.out" }, at);
+      const out = (sel, at, d = 0.3) => tl.to(sel, { opacity: 0, duration: d, ease: "power2.in" }, at);
+
+      inUp("#hook-wrap .label", 0.1, 0.5);
+      tl.fromTo("#bubble", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.55, ease: "back.out(1.4)" }, 0.25);
+
+      inUp("#title", 5.05, 0.6);
+      tl.fromTo(".rule", { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: "power3.out" }, 5.4);
+      inUp("#tagline", 5.6, 0.5);
+
+      [["#c1", 7.7, 3.6], ["#c2", 11.9, 5.0]].forEach(([sel, at, dur]) => {
+        tl.fromTo(sel + " .card", { opacity: 0, x: -36 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, at);
+        out(sel + " .card", at + dur - 0.3, 0.3);
+      });
+
+      tl.fromTo("#s4bg", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.out" }, 17.2);
+      inUp("#o-title", 17.4, 0.6);
+      inUp("#o-tag", 18.1, 0.6);
+      inUp("#o-credit", 20.2, 0.5);
+      inUp("#o-repo", 20.8, 0.5);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

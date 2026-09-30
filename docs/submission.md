@@ -21,9 +21,13 @@ It was tested end to end in headless Chrome against the live AssemblyAI APIs (co
 **Technology tags:** AssemblyAI Voice Agent API · Realtime Speech-to-Text API · (React, TypeScript, Vite, Vercel)
 **Category:** Fintech · Fraud prevention · Voice AI
 
-**Links:** GitHub https://github.com/adwik1401/second-voice · Demo app: `<your Vercel URL>` · Video: `<upload link>` · Slides: `docs/Second-Voice-deck.pptx`
+**Links:** GitHub https://github.com/adwik1401/second-voice · Demo app: `<your Vercel URL>` · Video: `<upload link>` (files: `docs/video/second-voice-demo.mp4`, 85 s, and `docs/video/second-voice-teaser.mp4`, 23 s) · Slides: `docs/Second-Voice-deck.pptx`
 
-## Demo video — about 3 minutes
+## Demo video
+
+**Ready to upload:** `docs/video/second-voice-demo.mp4` (85 s, 1080p). It is a real recorded run (headless Chrome against the live AssemblyAI Voice Agent API, agent voice is the real agent audio) with Kokoro narration, made with HyperFrames; the customer and scammer voices are synthetic and the video says so on screen. `docs/video/second-voice-teaser.mp4` (23 s, `/brag --voice`) is a short social cut. Upload one of them to YouTube (unlisted) and paste the link above.
+
+### Optional: record your own version (about 3 minutes)
 
 Setup: laptop with speakers (no headphones) in a quiet room, Chrome at `<your URL>` (or `http://localhost:5173`); phone open at `<your URL>/simulator`, volume about 70%, **on the table next to the laptop**. Screen-record at 1440×900 or larger. You are the customer; speak naturally.
 

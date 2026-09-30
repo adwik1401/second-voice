@@ -1,6 +1,6 @@
 # Second Voice — Implementation Plan
 
-**Overall Progress:** `84%` (27 / 32 numbered steps · Phases 1–5 done; 6–8 prepared; open = Phase 0 gate (waived), real-voice runs, video, deploy, form · Phase 0 gate proceeded past by Adwik's decision: only 3 counted trials + observations; range/latency/gateway checks still open)
+**Overall Progress:** `87%` (28 / 32 numbered steps · Phases 1–5 done; 6–8 prepared; open = Phase 0 gate (waived), real-voice runs, video, deploy, form · Phase 0 gate proceeded past by Adwik's decision: only 3 counted trials + observations; range/latency/gateway checks still open)
 
 **Spec:** [`.claude/specs/2026-09-30-second-voice-design.md`](../specs/2026-09-30-second-voice-design.md) · **Repo:** https://github.com/adwik1401/second-voice
 
@@ -123,6 +123,6 @@ Each code phase follows:
 
 - [x] 🟩 **Step 28:** Stats verified against primary sources: UK Finance Annual Fraud Report 2026 (APP losses £576.4m in 2025, +19%); PSR scheme in force **7 October 2024**, £85,000 maximum, 50:50 sending/receiving split. The unverified US $20bn figure is not used anywhere
 - [x] 🟩 **Step 29:** Slide deck — `docs/Second-Voice-deck.pptx`, 10 slides (cover, problem, idea, demo, architecture, AAI usage + lessons, trust + limits, evidence, business value, next), rendered and checked
-- [ ] 🟥 **Step 30:** 3-min video — **Adwik records** (real voice + phone on speakerphone). Timed script, setup and tips are in `docs/submission.md`
+- [x] 🟩 **Step 30:** Demo video — **done by Claude**: `docs/video/second-voice-demo.mp4` (85 s; real recorded run + real agent audio, Kokoro narration, HyperFrames; synthetic customer/coach voices disclosed on screen) and `docs/video/second-voice-teaser.mp4` (23 s, `/brag --voice`). Adwik's own real-voice version is optional (script in `docs/submission.md`)
 - [x] 🟩 **Step 31:** Cover image (`docs/images/cover.png`, source `docs/cover.html`); short + long descriptions; tags — in `docs/submission.md`
 - [ ] 🟥 **Step 32:** lablab submission form — **Adwik**, by 8:30 PM IST (aim for 7:30 PM); checklist in `docs/submission.md`
