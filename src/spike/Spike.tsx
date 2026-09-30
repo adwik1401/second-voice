@@ -4,6 +4,7 @@
  */
 import { useMemo, useRef, useState } from 'react';
 import { SpikeSession, type AgentLine, type RoomTurn } from './session';
+import { openMic } from './audio';
 import { speakerLoudness, unmatchedWords } from './metrics';
 import './spike.css';
 
@@ -39,7 +40,35 @@ export default function Spike() {
   const [agentLines, setAgentLines] = useState<AgentLine[]>([]);
   const [latencies, setLatencies] = useState<Record<AgentKind, number[]>>({ managed: [], gateway: [] });
   const [trials, setTrials] = useState({ hit: 0, miss: 0, ttsLeak: 0, benignFlagged: 0 });
+  const [probe, setProbe] = useState<{ asked: string; got: string }[]>([]);
   const session = useRef<SpikeSession | null>(null);
+
+  /**
+   * Asks Chrome for every echo-cancel / noise-suppress / auto-gain combination and records what it
+   * actually grants. Run 3 showed Mic B asked for echoCancellation:true but received false — this
+   * finds out which combinations (if any) give AEC with NS and AGC off.
+   */
+  async function probeConstraints() {
+    const rows: { asked: string; got: string }[] = [];
+    for (const aec of [true, false])
+      for (const ns of [true, false])
+        for (const agc of [true, false]) {
+          // Newer Chrome typings allow string modes (e.g. "remote-only") as well as booleans.
+          const onOff = (v: boolean | string | undefined) =>
+            v === undefined ? '?' : v === true || (typeof v === 'string' && v !== 'none') ? 'on' : 'off';
+          const label = (a: boolean | string | undefined, n: boolean | string | undefined, g: boolean | string | undefined) =>
+            `AEC ${onOff(a)} · NS ${onOff(n)} · AGC ${onOff(g)}`;
+          try {
+            const stream = await openMic({ echoCancellation: aec, noiseSuppression: ns, autoGainControl: agc });
+            const g = stream.getAudioTracks()[0].getSettings();
+            stream.getTracks().forEach((t) => t.stop());
+            rows.push({ asked: label(aec, ns, agc), got: label(g.echoCancellation, g.noiseSuppression, g.autoGainControl) });
+          } catch (e) {
+            rows.push({ asked: label(aec, ns, agc), got: `error: ${e instanceof Error ? e.message : String(e)}` });
+          }
+        }
+    setProbe(rows);
+  }
 
   const setAgentId = (k: AgentKind, id: string) => {
     const next = { ...agents, [k]: id.trim() };
@@ -108,6 +137,7 @@ export default function Spike() {
         chromeHonouredDifferentConstraints: honoured,
         micA: constraints?.a,
         micB: constraints?.b,
+        constraintProbe: probe,
         speakerLoudness: loudness,
         farGapThresholdDb: FAR_GAP_DB,
         trials,
@@ -270,6 +300,31 @@ export default function Spike() {
           managed: <b>{avg(latencies.managed) ?? '—'} ms</b> (n={latencies.managed.length}) · gateway:{' '}
           <b>{avg(latencies.gateway) ?? '—'} ms</b> (n={latencies.gateway.length})
         </p>
+      </section>
+
+      <section>
+        <h2>7 · Mic constraint probe (what Chrome really grants)</h2>
+        <button onClick={() => void probeConstraints()} disabled={running}>Probe 8 combinations</button>
+        {probe.length > 0 && (
+          <table>
+            <thead>
+              <tr>
+                <th>asked for</th>
+                <th>granted</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {probe.map((r) => (
+                <tr key={r.asked}>
+                  <td>{r.asked}</td>
+                  <td>{r.got}</td>
+                  <td>{r.asked === r.got ? '' : '⚠ differs'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
 
       <button onClick={() => void navigator.clipboard.writeText(results())}>Copy results JSON</button>
