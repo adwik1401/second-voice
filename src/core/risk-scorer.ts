@@ -73,10 +73,11 @@ function scoreReasons(s: RiskSignals): RiskReason[] {
   return r;
 }
 
+const isCoaching = (s: RiskSignals) => s.coachingConfidence !== null && s.coachingConfidence >= COACHING_MIN_CONFIDENCE;
+
 /** The first hard trigger that applies, or null. Order matters only for the audit message. */
 function hardTrigger(s: RiskSignals): string | null {
-  const coaching = s.coachingConfidence !== null && s.coachingConfidence >= COACHING_MIN_CONFIDENCE;
-  if (s.echo && coaching) return 'Coaching detected and the customer repeated the coach’s words';
+  if (s.echo && isCoaching(s)) return 'Coaching detected and the customer repeated the coach’s words';
   if (s.toldToLie) return 'Customer was told to give a false reason';
   if (s.safeAccount) return 'Customer was asked to move money to a “safe account”';
   if (s.contactedByAuthority) return 'Customer was contacted by someone claiming to be the police or the bank';
@@ -90,15 +91,26 @@ export function score(signals: RiskSignals): RiskResult {
     reasons.reduce((sum, r) => sum + r.points, 0),
   );
 
+  /** Lifts the score to `floor` and records the lift as its own audit line, so the reasons still sum to the score. */
+  const liftTo = (floor: number, label: string) => {
+    if (total < floor) {
+      reasons.push({ label, points: floor - total });
+      total = floor;
+    }
+  };
+
   const trigger = hardTrigger(signals);
   let decision: Decision;
   if (trigger !== null) {
     decision = 'ESCALATE';
-    total = Math.max(total, ESCALATE_MIN); // keep the displayed score consistent with the outcome
+    liftTo(ESCALATE_MIN, `Escalation rule: ${trigger}`);
   } else if (total >= ESCALATE_MIN) {
     decision = 'ESCALATE';
-  } else if (total >= COOLING_OFF_MIN) {
+  } else if (total >= COOLING_OFF_MIN || isCoaching(signals)) {
+    // Coaching floor: a confidently detected coach always earns at least a hold, even if other checks passed
+    // (or a bank tool failed to report back) and the points alone fall short of the threshold.
     decision = 'COOLING_OFF';
+    if (isCoaching(signals)) liftTo(COOLING_OFF_MIN, 'Minimum hold applied because coaching was detected');
   } else {
     decision = 'RELEASE';
   }

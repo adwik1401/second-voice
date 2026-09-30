@@ -157,6 +157,7 @@ Phone: Scammer Simulator page (pre-generated AI-voice clips)
 
 - **Decisions:** `RELEASE` (< 30) · `COOLING_OFF` 24 h hold (30–69) · `ESCALATE` to human fraud officer (≥ 70).
 - **Hard triggers → ESCALATE regardless:** ECHO + coaching; customer says they were told to lie / move money to a "safe account" / contacted by "police" or "the bank". The displayed score is lifted to at least 70 so the gauge agrees with the outcome. Implementation: `src/core/risk-scorer.ts`.
+- **Coaching floor (added 2026-09-30, Adwik approved):** a confidently detected coach (confidence ≥ 0.7) always yields at least `COOLING_OFF` — the score is lifted to 30 with an explicit audit line — so a failed bank check or a clean payee can never produce a RELEASE of a coached customer. Lifts (this one and the hard-trigger lift to 70) are recorded as their own reason lines, so reason points always sum to the score.
 - **Customer-protective invariant:** the agent never states a flat refusal. Every non-release offers a human and explains the hold; customer can always proceed via human review.
 
 ### 7.8 Agent Injector

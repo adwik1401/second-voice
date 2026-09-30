@@ -41,8 +41,14 @@ describe('points table (spec §7.7)', () => {
     ['echo', { echo: true }, 30],
     ['a failed bank tool', { toolFailed: true }, 10],
   ];
-  it.each(cases)('%s → %i points', (_name, over, points) => {
-    expect(score(sig(over)).score).toBe(points);
+  // Lift lines (coaching floor, escalation rule) are audit adjustments, not table rows — measure the table alone.
+  const tablePoints = (over: Partial<RiskSignals>) =>
+    score(sig(over))
+      .reasons.filter((r) => !/^(Minimum hold|Escalation rule)/.test(r.label))
+      .reduce((sum, r) => sum + r.points, 0);
+
+  it.each(cases.map(([name, over, points]) => ({ name, over, points })))('$name → $points points', ({ over, points }) => {
+    expect(tablePoints(over)).toBe(points);
   });
 
   it('every reason line carries its own points, and they sum to the score', () => {
@@ -95,11 +101,13 @@ describe('decision bands', () => {
 });
 
 describe('hard triggers force ESCALATE regardless of score', () => {
-  it('coaching + echo (55 points on the table) escalates, and the displayed score is lifted to 70', () => {
+  it('coaching + echo (55 points on the table) escalates, and the displayed score is lifted to 70 with an audit line', () => {
     const r = score(sig({ coachingConfidence: 0.9, echo: true }));
     expect(r.decision).toBe('ESCALATE');
     expect(r.score).toBe(70);
     expect(r.hardTrigger).toMatch(/repeated/);
+    expect(r.reasons.at(-1)).toMatchObject({ points: 15 });
+    expect(r.reasons.at(-1)!.label).toMatch(/^Escalation rule/);
   });
 
   it.each([
@@ -114,6 +122,25 @@ describe('hard triggers force ESCALATE regardless of score', () => {
 
   it('coaching alone is not a hard trigger', () => {
     expect(score(sig({ coachingConfidence: 0.9 })).hardTrigger).toBeNull();
+  });
+});
+
+describe('coaching floor', () => {
+  it('holds a coached customer even when nothing else scored (25 points alone would RELEASE)', () => {
+    const r = score(sig({ coachingConfidence: 0.9 }));
+    expect(r).toMatchObject({ decision: 'COOLING_OFF', score: 30, offerHuman: true, hardTrigger: null });
+    expect(r.reasons.map((x) => x.points)).toEqual([25, 5]);
+    expect(r.reasons[1].label).toMatch(/coaching was detected/);
+  });
+
+  it('does not apply below the confidence threshold', () => {
+    expect(score(sig({ coachingConfidence: 0.69 })).decision).toBe('RELEASE');
+  });
+
+  it('leaves a higher score untouched', () => {
+    const r = score(sig({ coachingConfidence: 0.9, newPayee: true, copResult: 'NO_MATCH' }));
+    expect(r).toMatchObject({ decision: 'COOLING_OFF', score: 55 });
+    expect(r.reasons).toHaveLength(3);
   });
 });
 
@@ -151,6 +178,15 @@ describe('customer-protective invariants', () => {
     }
   });
 
+  it('always explains the score: reason points sum to it (except when capped at 100)', () => {
+    for (const s of grid) {
+      const r = score(s);
+      const sum = r.reasons.reduce((t, x) => t + x.points, 0);
+      if (r.score < 100) expect(sum).toBe(r.score);
+      else expect(sum).toBeGreaterThanOrEqual(100);
+    }
+  });
+
   it('keeps the score within 0..100 and consistent with the decision', () => {
     for (const s of grid) {
       const r = score(s);
@@ -158,6 +194,12 @@ describe('customer-protective invariants', () => {
       expect(r.score).toBeLessThanOrEqual(100);
       if (r.decision === 'ESCALATE') expect(r.score).toBeGreaterThanOrEqual(70);
       if (r.decision === 'RELEASE') expect(r.score).toBeLessThan(30);
+    }
+  });
+
+  it('never RELEASEs a confidently detected coach', () => {
+    for (const s of grid) {
+      if (s.coachingConfidence !== null) expect(score(s).decision).not.toBe('RELEASE');
     }
   });
 
