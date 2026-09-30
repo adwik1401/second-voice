@@ -1,0 +1,23 @@
+# Dependencies & builds
+node_modules/
+dist/
+build/
+coverage/
+.vercel/
+.netlify/
+
+# Env — never commit real credentials (only .env.example is tracked)
+.env
+.env.*
+!.env.example
+
+# Local-only: competition strategy wiki and third-party source PDF
+.claude/wiki/
+*.pdf
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
