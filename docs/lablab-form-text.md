@@ -12,3 +12,26 @@ Second Voice is a short Voice Check that opens in the banking app when a payment
 A transparent points table, never the LLM, decides: release, pause for 24 hours, or escalate to a fraud specialist. Every hold offers a human, and a fraud officer watches the same call live with an itemised "why this score" and an exportable audit record. It fails safe (mic denied or connection lost means a hold, never a release) and stores no audio.
 
 Tested end to end in headless Chrome against the live APIs (coached scam escalated 7 of 7, honest customer released 2 of 2) with 455 automated tests. Limits are stated plainly: it hears coaching at conversational volume within arm's reach of the laptop, not whispers across a room.
+
+## Additional Information
+HOW TO TRY IT
+Open https://second-voice-larkmoor.netlify.app on a laptop (Chrome, allow the microphone, no headphones). Pick "£8,000 to a car dealer", Send, Start voice check. To play the scammer, open /simulator on a phone, put it on speakerphone next to the laptop and tap "Play a coached call". The fraud officer panel on the right shows the live score and why. The £1,200 plumber scenario shows an honest customer being released.
+
+ASSEMBLYAI USAGE
+- Voice Agent API: a stored agent with six client-side tools (payee check, recipient risk, customer history, record answer, decide payment, hand to human), far-field voice focus, trusted system messages to make it ask one gentle question, reply.create, and session.resume for reconnects.
+- Realtime Speech-to-Text (universal-3-6-pro): a second stream from the same microphone, with speaker labels and per-word loudness, to hear the room.
+
+WHAT WE LEARNED
+- One shared mic stream with echo cancellation on beats two separate mics; two different streams silently lost echo cancellation.
+- Coaching detection is rules-first (instant, offline, immune to "ignore your rules" prompt injection): 16/16 on labelled cases, 8/10 on held-out, zero false alarms. An LLM second opinion is optional.
+- Live runs caught five real bugs that unit tests could not, all fixed.
+
+HONEST LIMITS
+- It hears coaching at conversational volume within arm's reach of the laptop, not whispers across a room. Louder sources are caught from farther away.
+- Speaker labels are only a tie-breaker. The agent speaks English; it understands 18 languages.
+- The demo video uses the real agent voice and live system output, but the customer and scammer voices are synthetic. All banks, people and accounts are fictional.
+
+WHAT'S NEXT
+A range study, an inbound phone channel through a SIP trunk, and a pilot with a real bank's fraud team.
+
+Code (MIT): github.com/adwik1401/second-voice
