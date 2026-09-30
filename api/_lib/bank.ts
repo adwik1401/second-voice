@@ -2,9 +2,9 @@
  * Mock bank services (Plan Step 10): the three lookups behind the agent's tools.
  * Pure functions over the fictional data in bank-data.ts so they are trivially testable.
  */
-import { tokenize, wordsMatch } from '../../src/core/text-match';
-import type { CopResult } from '../../src/core/types';
-import { CUSTOMERS, PAYEE_ACCOUNTS, type CustomerProfile, type PayeeAccount } from './bank-data';
+import { tokenize, wordsMatch } from '../../src/core/text-match.js';
+import type { CopResult } from '../../src/core/types.js';
+import { CUSTOMERS, PAYEE_ACCOUNTS, type CustomerProfile, type PayeeAccount } from './bank-data.js';
 
 /** Sort codes and account numbers arrive in many spoken/typed shapes ("99-12-34", "991234"); keep digits only. */
 const digits = (s: string) => s.replace(/\D/g, '');

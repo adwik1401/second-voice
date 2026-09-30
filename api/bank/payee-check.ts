@@ -1,5 +1,5 @@
-import { checkPayee } from '../_lib/bank';
-import { badRequest, json } from '../_lib/http';
+import { checkPayee } from '../_lib/bank.js';
+import { badRequest, json } from '../_lib/http.js';
 
 /** GET /api/bank/payee-check?sortCode=…&accountNumber=…&name=… — Confirmation of Payee (tool: check_payee). */
 export function GET(request: Request): Response {

@@ -1,6 +1,6 @@
-import { parseDetectRequest } from './_lib/detect';
-import { detectCoaching } from './_lib/detect-flow';
-import { badRequest, json } from './_lib/http';
+import { parseDetectRequest } from './_lib/detect.js';
+import { detectCoaching } from './_lib/detect-flow.js';
+import { badRequest, json } from './_lib/http.js';
 
 /**
  * POST /api/detect — does anything said near the customer read as coaching?

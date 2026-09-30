@@ -1,5 +1,5 @@
-import { getPayeeRisk } from '../_lib/bank';
-import { badRequest, json, notFound } from '../_lib/http';
+import { getPayeeRisk } from '../_lib/bank.js';
+import { badRequest, json, notFound } from '../_lib/http.js';
 
 /** GET /api/bank/payee-risk?sortCode=…&accountNumber=… — account age, mule-risk score, prior reports (tool: get_payee_risk). */
 export function GET(request: Request): Response {

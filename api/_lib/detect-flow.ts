@@ -7,8 +7,8 @@
  *     and an API key. It catches paraphrases the patterns miss. If it fails, the verdict says so (`degraded`).
  *  3. Otherwise: `unclear` with zero confidence — "nothing recognised", which is not evidence of innocence.
  */
-import { classifyByRules } from '../../src/core/coaching-rules';
-import { classify, type DetectRequest, type DetectResponse } from './detect';
+import { classifyByRules } from '../../src/core/coaching-rules.js';
+import { classify, type DetectRequest, type DetectResponse } from './detect.js';
 
 export interface DetectOptions {
   apiKey?: string;
