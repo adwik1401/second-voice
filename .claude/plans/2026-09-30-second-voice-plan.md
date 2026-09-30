@@ -1,6 +1,6 @@
 # Second Voice — Implementation Plan
 
-**Overall Progress:** `3%` (1 / 32 steps done · Phase 0 in progress: Steps 2–3 built, awaiting live verification)
+**Overall Progress:** `6%` (2 / 32 steps done · Phase 0 in progress: Step 3 built, awaiting first live run + trials)
 
 **Spec:** [`.claude/specs/2026-09-30-second-voice-design.md`](../specs/2026-09-30-second-voice-design.md) · **Repo:** https://github.com/adwik1401/second-voice
 
@@ -35,11 +35,11 @@ Each code phase follows:
 - [x] 🟩 **Step 1: Scaffold repo**
   - [x] 🟩 Vite + React + TS app; ESLint; Vitest; scripts `dev`, `build`, `lint`, `typecheck`, `test`
   - [x] 🟩 `api/` folder for Vercel functions (web-standard `GET(request)` handlers; Vite dev middleware serves them locally, no Vercel CLI needed); `.env.example` (`ASSEMBLYAI_API_KEY`)
-- [ ] 🟨 **Step 2: Token endpoints (Claude-managed secrets)** — built + unit-tested with mocked fetch; **live call pending API key**
+- [x] 🟩 **Step 2: Token endpoints (Claude-managed secrets)** — unit-tested and live-verified 2026-09-30 (both return HTTP 200)
   - [x] 🟩 `GET /api/token/agent` → AAI `GET /v1/token` (Bearer auth; 120 s redemption, 600 s session cap)
   - [x] 🟩 STT browser token endpoint verified in docs (`GET streaming.assemblyai.com/v3/token`, raw-key auth) → `GET /api/token/stt`
-  - [ ] 🟥 Live-verify both endpoints return a token with the real key
-- [ ] 🟨 **Step 3: Spike page (`/spike`, throwaway)** — built, typechecked, linted; **first live run pending API key + mic**
+  - [x] 🟩 Live-verified both endpoints return a token with the real key
+- [ ] 🟨 **Step 3: Spike page (`/spike`, throwaway)** — built, typechecked, linted; **agents created (managed + gateway); first live run pending mic**
   - [x] 🟩 Mic A + Mic B with different constraints; page reports whether Chrome honoured both (`getSettings()`)
   - [x] 🟩 Room stream → Realtime STT `speaker_labels: true`, `max_speakers: 3` (`universal-3-6-pro`)
   - [x] 🟩 Agent stream → Voice Agent session via stored `agent_id`; replies played with barge-in flush
