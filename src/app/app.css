@@ -83,3 +83,46 @@ label.field input:focus { outline: 2px solid var(--amber); border-color: var(--a
 .outcome.COOLING_OFF h2 { color: var(--warn); }
 .outcome.ESCALATE h2 { color: var(--bad); }
 .ref { font-family: ui-monospace, Consolas, monospace; background: #f3f6f7; border-radius: 6px; padding: 2px 8px; }
+
+/* ---- Fraud Officer Panel (dark ops console, docked right) ---- */
+.with-panel .bank-main { padding-right: 452px; max-width: none; margin: 0 0 0 auto; }
+.with-panel .bank-header { padding-right: 452px; }
+.with-panel .overlay { right: 436px; }
+.officer { position: fixed; top: 0; right: 0; bottom: 0; width: 436px; background: #0b2530; color: #dbe7ec; padding: 16px 18px 24px; overflow-y: auto; z-index: 20; border-left: 1px solid #1b4252; font-size: 14px; }
+.officer h3 { margin: 18px 0 8px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #8fb1bf; }
+.officer section { margin: 0; }
+.officer-head { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
+.officer-title { font-size: 17px; font-weight: 700; color: #fff; }
+.officer-sub { font-size: 12px; color: #8fb1bf; margin-top: 2px; }
+.officer-x { background: transparent; border: 0; color: #8fb1bf; font-size: 16px; }
+.gauge-row { display: flex; align-items: baseline; gap: 10px; margin-top: 14px; }
+.score { font-size: 44px; font-weight: 800; line-height: 1; }
+.score.release, .gauge-label .release { color: #66bb6a; }
+.score.hold, .gauge-label .hold { color: #ffb74d; }
+.score.escalate, .gauge-label .escalate { color: #ff6b5e; }
+.gauge { position: relative; height: 12px; border-radius: 6px; background: #163847; margin-top: 10px; overflow: hidden; }
+.gauge-fill { height: 100%; transition: width 0.5s ease, background 0.4s; }
+.gauge-fill.release { background: #66bb6a; } .gauge-fill.hold { background: #ffb74d; } .gauge-fill.escalate { background: #ff6b5e; }
+.tick { position: absolute; top: 0; bottom: 0; width: 2px; background: #0b2530; }
+.gauge-scale { display: flex; justify-content: space-between; font-size: 11px; color: #8fb1bf; margin-top: 4px; }
+.hard { margin-top: 10px; background: #3b1714; color: #ffb4ab; border-radius: 8px; padding: 8px 10px; font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border-radius: 999px; padding: 3px 10px; font-size: 12.5px; background: #163847; }
+.chip.ok { background: #16382a; color: #a5d6a7; } .chip.warn { background: #3d2e10; color: #ffcc80; } .chip.bad { background: #431b17; color: #ff9f94; } .chip.info { background: #163847; color: #b3d4e0; }
+.reasons, .evidence { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.reasons li { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid #163847; padding: 3px 0; }
+.reasons b { color: #ffcc80; white-space: nowrap; }
+.evidence li { background: #122f3c; border-radius: 8px; padding: 6px 9px; }
+.evidence .src { background: #1f4a5c; border-radius: 4px; padding: 0 6px; font-size: 11px; text-transform: uppercase; margin-right: 4px; }
+.otrans { display: grid; gap: 4px; max-height: 230px; overflow-y: auto; }
+.oline { padding: 5px 9px; border-radius: 8px; background: #122f3c; }
+.oline small { display: inline-block; color: #8fb1bf; margin-right: 6px; font-size: 11px; text-transform: uppercase; }
+.oline.customer { background: #15323f; }
+.oline.coach { background: #431b17; color: #ffb4ab; outline: 1px solid #7a2d25; }
+.oline.echo { background: #3d2e10; color: #ffcc80; outline: 1px solid #7a5a1a; }
+.quiet { color: #8fb1bf; font-size: 13px; }
+.officer-actions { display: flex; gap: 8px; margin-top: 18px; }
+.officer-actions button { background: #1f4a5c; color: #fff; border: 0; border-radius: 8px; padding: 9px 12px; font-size: 13px; }
+.officer-actions button:hover { background: #28617a; }
+.foot { margin-top: 12px; }
+@media (max-width: 980px) { .with-panel .bank-main, .with-panel .bank-header { padding-right: 16px; } .with-panel .overlay { right: 0; } .officer { width: 100%; top: auto; height: 55vh; } }

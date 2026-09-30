@@ -19,7 +19,7 @@ import { detectCoaching, type DetectInput, type DetectResult } from './detect-cl
 import { AgentInjector, transferContext } from './injector';
 import { fetchAgentToken } from './token';
 import { createToolRunner } from './tools';
-import type { CopInfo, ProfileInfo, TranscriptLine, TransferIntent } from './types';
+import type { CopInfo, ProfileInfo, RoomLine, RoomStatus, TranscriptLine, TransferIntent } from './types';
 
 /** Coaching is acted on at this confidence — the same floor the risk scorer uses. */
 const ACT_CONFIDENCE = 0.7;
@@ -46,6 +46,9 @@ const defaultOpenMic = () => openMic({ echoCancellation: true, noiseSuppression:
 export class VoiceCheck {
   readonly state: CheckState;
   readonly transcript: TranscriptLine[] = [];
+  /** The room stream (Realtime STT) — what the whole room heard; populated while it is connected. */
+  roomStatus: RoomStatus = 'off';
+  readonly roomLines: RoomLine[] = [];
   /** Wall-clock windows in which the agent stream heard the customer speaking (input for the Signal Engine). */
   readonly customerWindows: TimeWindow[] = [];
   status: SessionStatus = 'idle';

@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { VoiceCheck } from '../voice/voice-check';
 import { SCENARIOS } from './scenarios';
+import OfficerPanel from './OfficerPanel';
 import { EMPTY_FORM, evaluateTransfer, type TransferForm } from './transfer';
 import VoiceCheckModal from './VoiceCheckModal';
 import './app.css';
@@ -32,6 +33,9 @@ export default function BankApp() {
   const [busy, setBusy] = useState(false);
   const [banner, setBanner] = useState<Banner | null>(null);
   const [active, setActive] = useState<{ check: VoiceCheck; reasons: string[] } | null>(null);
+  // The officer panel outlives the customer's modal, so the audit record stays reachable after "Done".
+  const [watching, setWatching] = useState<VoiceCheck | null>(null);
+  const [panelOpen, setPanelOpen] = useState(true);
 
   const set = (key: keyof TransferForm) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value });
 
@@ -53,6 +57,8 @@ export default function BankApp() {
       case 'check': {
         const check = new VoiceCheck(outcome.transfer, { profile: outcome.profile, cop: outcome.cop });
         if (import.meta.env.DEV) window.__voiceCheck = check; // dev builds only — for end-to-end drivers
+        setWatching(check);
+        setPanelOpen(true);
         return setActive({ check, reasons: outcome.reasons });
       }
     }
@@ -75,10 +81,13 @@ export default function BankApp() {
   }
 
   return (
-    <>
+    <div className={watching && panelOpen ? 'with-panel' : undefined}>
       <header className="bank-header">
         <div className="brand">Lark<span>moor</span> Bank</div>
-        <div className="user">Sarah Mitchell · Personal account</div>
+        <div className="user">
+          {watching && !panelOpen && <button className="btn btn-ghost" style={{ color: '#fff', borderColor: '#ffffff55', padding: '4px 10px', marginRight: 12 }} onClick={() => setPanelOpen(true)}>Officer view</button>}
+          Sarah Mitchell · Personal account
+        </div>
       </header>
 
       <main className="bank-main">
@@ -114,6 +123,7 @@ export default function BankApp() {
       </main>
 
       {active && <VoiceCheckModal check={active.check} reasons={active.reasons} onClose={({ proceed }) => finish(proceed)} />}
-    </>
+      {watching && panelOpen && <OfficerPanel check={watching} onHide={() => setPanelOpen(false)} />}
+    </div>
   );
 }

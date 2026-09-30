@@ -40,6 +40,16 @@ export const ANSWER_TOPICS: readonly AnswerTopic[] = ['purpose', 'relationship',
 
 export type PressureCue = 'urgency' | 'secrecy' | 'authority';
 
+/** A finalised turn from the room stream (Realtime STT), for the Fraud Officer Panel. */
+export interface RoomLine {
+  at: number;
+  speaker: string;
+  text: string;
+  /** True when part of it was room-only speech nobody on the call accounts for. */
+  flagged: boolean;
+}
+export type RoomStatus = 'off' | 'connecting' | 'live' | 'unavailable';
+
 export type LineRole = 'customer' | 'agent';
 export interface TranscriptLine {
   role: LineRole;
