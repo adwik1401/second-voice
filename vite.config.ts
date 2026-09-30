@@ -3,6 +3,13 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 
+/** Reads a Node request body into a Buffer (empty for bodiless requests). */
+async function readBody(req: IncomingMessage): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) chunks.push(chunk as Buffer);
+  return Buffer.concat(chunks);
+}
+
 /**
  * Serves `api/**` locally so `npm run dev` needs no Vercel CLI or login.
  * Each file exports web-standard method handlers (`GET`, `POST`, …) — the same
@@ -17,12 +24,16 @@ function devApi(): Plugin {
         if (!path.startsWith('/api/')) return next();
         try {
           const mod = await server.ssrLoadModule(`${path}.ts`);
-          const handler = mod[(req.method ?? 'GET').toUpperCase()];
+          const method = (req.method ?? 'GET').toUpperCase();
+          const handler = mod[method];
           if (typeof handler !== 'function') {
             res.statusCode = 405;
             return res.end('Method Not Allowed');
           }
-          const out: Response = await handler(new Request(`http://localhost${req.url}`, { method: req.method }));
+          const hasBody = method !== 'GET' && method !== 'HEAD';
+          const out: Response = await handler(
+            new Request(`http://localhost${req.url}`, { method, body: hasBody ? new Uint8Array(await readBody(req)) : undefined }),
+          );
           res.statusCode = out.status;
           out.headers.forEach((value, key) => res.setHeader(key, value));
           res.end(await out.text());
@@ -39,6 +50,6 @@ export default defineConfig(({ mode }) => {
   Object.assign(process.env, loadEnv(mode, process.cwd(), ''));
   return {
     plugins: [react(), devApi()],
-    test: { environment: 'node', include: ['api/**/*.test.ts', 'src/**/*.test.ts'] },
+    test: { environment: 'node', include: ['api/**/*.test.ts', 'src/**/*.test.ts', 'scripts/**/*.test.ts'] },
   };
 });
