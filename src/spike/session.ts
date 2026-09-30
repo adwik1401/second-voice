@@ -7,7 +7,7 @@
  * The spike answers: can one laptop mic give us both a clean customer stream and a room stream
  * faint enough voices survive in — and does the loudness/diarization evidence separate a whisperer?
  */
-import { FRAME_MS, PcmPlayer, base64ToPcm16, openMic, pcm16ToBase64, startPcmCapture, type Capture } from './audio';
+import { FRAME_MS, PcmPlayer, base64ToPcm16, openMic, pcm16ToBase64, startPcmCapture, type Capture } from '../voice/audio';
 import { wordDbfs } from './metrics';
 
 export interface RoomWord {

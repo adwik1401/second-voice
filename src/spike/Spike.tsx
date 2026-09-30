@@ -4,7 +4,7 @@
  */
 import { useMemo, useRef, useState } from 'react';
 import { SpikeSession, type AgentLine, type RoomTurn } from './session';
-import { openMic } from './audio';
+import { openMic } from '../voice/audio';
 import { speakerLoudness, unmatchedWords } from './metrics';
 import './spike.css';
 
