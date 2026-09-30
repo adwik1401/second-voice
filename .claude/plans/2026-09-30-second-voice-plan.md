@@ -1,6 +1,6 @@
 # Second Voice — Implementation Plan
 
-**Overall Progress:** `78%` (25 / 32 steps done · Phases 1–5 done, Phase 6 partly · Phase 0 gate proceeded past by Adwik's decision: only 3 counted trials + observations; range/latency/gateway checks still open)
+**Overall Progress:** `84%` (27 / 32 numbered steps · Phases 1–5 done; 6–8 prepared; open = Phase 0 gate (waived), real-voice runs, video, deploy, form · Phase 0 gate proceeded past by Adwik's decision: only 3 counted trials + observations; range/latency/gateway checks still open)
 
 **Spec:** [`.claude/specs/2026-09-30-second-voice-design.md`](../specs/2026-09-30-second-voice-design.md) · **Repo:** https://github.com/adwik1401/second-voice
 
@@ -111,19 +111,18 @@ Each code phase follows:
 - [x] 🟩 **Step 26: Tune** — no threshold tuning needed (loudness/diarization are tie-breakers only). Tuning that WAS needed, all found by live runs: echo window 10 → 30 s; stopwords bridge room-only runs; negation-aware cue analysis and no mining of the agent's paraphrase (honest customer was flagged for secrecy)
 - [x] 🟩 **Step 27: Agent prompt** — observed live across 7 runs: ≤ 2 short sentences per turn, one question at a time, asks the gentle second-voice question in the agent's own voice, reads the outcome kindly; no repeated-question problem after the first runs. No change needed
 
-### Phase 7 — Deploy / Quality Gate
+### Phase 7 — Deploy / Quality Gate 🟨 Prepared — the deploy itself is Adwik's (needs his Vercel login and secrets)
 > Claude-managed (no sub-agent delegation)
 
-- [ ] 🟥 Vercel project + env vars (`ASSEMBLYAI_API_KEY`) — set by Claude/Adwik, never committed
-- [ ] 🟥 Preview deploy + smoke test (Playwright or manual: S1 + S4 on the live URL, simulator on phone)
-- [ ] 🟥 Production deploy + repeat smoke test
-- [ ] 🟥 Update README (setup, architecture, AAI products used, demo links) + `changelog.md`
+- [ ] 🟥 Vercel project + env vars (`ASSEMBLYAI_API_KEY`, `AGENT_ID`) — **Adwik** (vercel.com/new → import the repo; steps in `docs/submission.md`). Prepared: `vercel.json` (SPA rewrite + mic permission header); function imports use explicit `.js` extensions (Vercel runs ES modules strictly) — verified by running every handler under plain Node ESM, with a negative control
+- [ ] 🟥 Preview deploy + smoke test — **Adwik deploys, Claude runs the smoke test** (three curl checks in `docs/submission.md`; share the URL and Claude will run them). Unverified until deployed: that Vercel accepts the web-standard `export function GET/POST(request: Request)` handlers as documented
+- [ ] 🟥 Production deploy + repeat smoke test — **Adwik**
+- [x] 🟩 README (problem, flow, architecture, AAI products, limitations, demo scenarios, tests, deploy) + `changelog.md`. Demo link to be added after deploy
 
-### Phase 8 — Submission Package
-> Claude-managed with Adwik
+### Phase 8 — Submission Package 🟨 Materials ready; recording and the form are Adwik's
 
-- [ ] 🟥 **Step 28:** Verify slide stats against primary sources (UK Finance £576.4m; PSR £85k / Oct 2024); drop or source the US $20bn figure
-- [ ] 🟥 **Step 29:** Slide deck (problem → demo → architecture → business case → AAI usage)
-- [ ] 🟥 **Step 30:** 3-min video per spec §5 script (record against the production URL)
-- [ ] 🟥 **Step 31:** Cover image; short + long descriptions; tags
-- [ ] 🟥 **Step 32:** lablab submission form — repo URL, app URL, video, slides — then final wiki update
+- [x] 🟩 **Step 28:** Stats verified against primary sources: UK Finance Annual Fraud Report 2026 (APP losses £576.4m in 2025, +19%); PSR scheme in force **7 October 2024**, £85,000 maximum, 50:50 sending/receiving split. The unverified US $20bn figure is not used anywhere
+- [x] 🟩 **Step 29:** Slide deck — `docs/Second-Voice-deck.pptx`, 10 slides (cover, problem, idea, demo, architecture, AAI usage + lessons, trust + limits, evidence, business value, next), rendered and checked
+- [ ] 🟥 **Step 30:** 3-min video — **Adwik records** (real voice + phone on speakerphone). Timed script, setup and tips are in `docs/submission.md`
+- [x] 🟩 **Step 31:** Cover image (`docs/images/cover.png`, source `docs/cover.html`); short + long descriptions; tags — in `docs/submission.md`
+- [ ] 🟥 **Step 32:** lablab submission form — **Adwik**, by 8:30 PM IST (aim for 7:30 PM); checklist in `docs/submission.md`
