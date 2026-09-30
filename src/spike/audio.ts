@@ -56,6 +56,11 @@ export function openMic(processing: {
   noiseSuppression: boolean;
   autoGainControl: boolean;
 }): Promise<MediaStream> {
+  // Browsers expose the microphone API only on secure pages (https or localhost). On a plain-http
+  // network address `navigator.mediaDevices` is undefined, which otherwise surfaces as a cryptic TypeError.
+  if (!navigator.mediaDevices) {
+    throw new Error('Microphone needs a secure page — open http://localhost:5173/spike on this computer (not the network address).');
+  }
   return navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, ...processing } });
 }
 
